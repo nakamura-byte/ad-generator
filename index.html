@@ -104,7 +104,13 @@
   .btn-csv { padding:7px 14px; border-radius:8px; border:1.5px solid #e5e5ea; font-size:12px; font-weight:600; color:#48484a; background:#fff; cursor:pointer; font-family:inherit; transition:border-color 0.15s,color 0.15s; white-space:nowrap; }
   .btn-csv:hover { border-color:#6366f1; color:#6366f1; }
   .csv-tip { font-size:11px; color:#6366f1; cursor:pointer; text-decoration:underline; white-space:nowrap; align-self:center; }
+  .fb-status { font-size:11px; color:#8e8e93; white-space:nowrap; }
+  .fb-status.saving { color:#ff9500; }
+  .fb-status.saved { color:#34c759; }
+  .fb-status.error { color:#ff3b30; }
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -112,6 +118,7 @@
   <h1>広告構成ジェネレーター</h1>
   <span class="badge">自動生成対応</span>
   <div class="header-right">
+    <span class="fb-status" id="fbStatus">読み込み中...</span>
     <span class="gs-sync-time" id="gsSyncTime"></span>
     <button class="btn-gs" id="gsBtn" onclick="syncToSheets()">⟳ スプレッドシート同期</button>
     <button class="btn-gs-cfg" onclick="toggleGsPanel()" title="設定">⚙</button>
@@ -168,6 +175,93 @@
 function p(v) { return (v || '').trim() || '＿＿＿'; }
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// === Firebase ===
+const firebaseConfig = {
+  apiKey: "AIzaSyDinkBkGFwcqxNq75yfjymnoEKUFQprtJA",
+  authDomain: "ad-generator-6aede.firebaseapp.com",
+  databaseURL: "https://ad-generator-6aede-default-rtdb.firebaseio.com",
+  projectId: "ad-generator-6aede",
+  storageBucket: "ad-generator-6aede.firebasestorage.app",
+  messagingSenderId: "997380724400",
+  appId: "1:997380724400:web:1bc080e25aafd2d2548d75"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let saveTimer = null;
+let isFbLoading = false;
+
+function setSaveStatus(status) {
+  const el = document.getElementById('fbStatus');
+  if (!el) return;
+  const map = { saving:'保存中...', saved:'保存済み ✓', error:'保存失敗', loading:'読み込み中...' };
+  el.textContent = map[status] || '';
+  el.className = 'fb-status ' + status;
+}
+
+function scheduleSave() {
+  if (isFbLoading) return;
+  clearTimeout(saveTimer);
+  setSaveStatus('saving');
+  saveTimer = setTimeout(fbSave, 1500);
+}
+
+function fbSave() {
+  const clean = v => v === undefined ? '' : v;
+  const data = refs.map(r => ({
+    title: r.title || '',
+    configKey: r.configKey || '',
+    templateKey: r.templateKey || '',
+    targetVariants: r.targetVariants || [],
+    videoUrl: r.videoUrl || '',
+    fieldValues: JSON.parse(JSON.stringify(r.fieldValues || {})),
+    metrics: (r.metrics || []).map(cr => ({
+      name: cr.name || '',
+      rows: (cr.rows || []).map(row => ({
+        date: clean(row.date), impressions: clean(row.impressions),
+        views: clean(row.views), clicks: clean(row.clicks),
+        ctr: clean(row.ctr), cvr: clean(row.cvr),
+        cv: clean(row.cv), cpa: clean(row.cpa), spend: clean(row.spend)
+      }))
+    }))
+  }));
+  db.ref('refs').set(data)
+    .then(() => setSaveStatus('saved'))
+    .catch(() => setSaveStatus('error'));
+}
+
+function fbLoad() {
+  isFbLoading = true;
+  setSaveStatus('loading');
+  db.ref('refs').once('value')
+    .then(snapshot => {
+      const val = snapshot.val();
+      if (val) {
+        const arr = Array.isArray(val) ? val : Object.values(val);
+        if (arr.length > 0) {
+          refs = arr.map(r => ({
+            title: r.title || '参考',
+            configKey: r.configKey || 'tcb7',
+            templateKey: r.templateKey || '',
+            targetVariants: r.targetVariants || [],
+            videoUrl: r.videoUrl || '',
+            fieldValues: r.fieldValues || {},
+            metrics: r.metrics || []
+          }));
+          activeRefIdx = Math.min(activeRefIdx, refs.length - 1);
+        }
+      }
+    })
+    .catch(() => setSaveStatus('error'))
+    .finally(() => {
+      isFbLoading = false;
+      renderRefPills();
+      renderForm();
+      render();
+      setSaveStatus('saved');
+    });
 }
 
 const REF_CONFIGS = {
@@ -268,6 +362,8 @@ const REF_CONFIGS = {
       {value:'hyaluronic',   label:'ヒアルロン酸注射'},
       {value:'acne',         label:'ニキビ治療'},
       {value:'thread_lift',  label:'糸リフト'},
+      {value:'kuma',         label:'クマ取り再生注射'},
+      {value:'nose',         label:'鼻整形'},
     ],
     templates: {
       fat_dissolve: { compare:'ジム', product:'脂肪溶解注射', num:'約35%の脂肪減少', weak:'確実に痩せる保証ない', num2:'最大35%の脂肪減少', b1:'減った脂肪は二度と戻らない', b2:'やめてもリバウンドの心配いらない', b3:'きつい運動も食事制限も必要ない', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'ジムであんなに頑張る時間も無駄じゃね？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
@@ -276,6 +372,8 @@ const REF_CONFIGS = {
       hyaluronic:   { compare:'プチプラコスメ', product:'ヒアルロン酸注射', num:'自然なふっくら感', weak:'表面からじゃ保湿するだけで根本は変わらない', num2:'自然なふっくら感', b1:'内側からふっくら感が出る', b2:'効果が半年〜1年続く', b3:'痛み・ダウンタイムほぼ0', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'プチプラ何個も買い続ける方がコスパ悪くない？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'クマ取り再生注射\n脂肪溶解注射\nボトックス注射', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
       acne:         { compare:'市販の薬', product:'ニキビ治療', num:'繰り返さない健康肌', weak:'表面を抑えるだけで根本が治らない', num2:'根本からの改善', b1:'原因から改善するから繰り返さない', b2:'肌荒れのループから抜け出せる', b3:'毎日薬を塗り続ける必要がない', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'市販薬に毎月お金かけ続ける方がもったいくね？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
       thread_lift:  { compare:'エステ', product:'糸リフト', num:'段違いのリフトアップ効果', weak:'一時的な効果で翌日には戻る', num2:'段違いのリフトアップ効果', b1:'コラーゲン生成を促して肌質から改善', b2:'効果が1〜2年続く', b3:'痛み・ダウンタイムほぼ0', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'エステ通い続ける方が長期的にコスパ悪くない？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      kuma:         { compare:'コンシーラー', product:'クマ取り再生注射', num:'若々しい目元の印象', weak:'表面を隠すだけで根本は変わらない', num2:'若々しい目元の印象', b1:'クマを根本から改善できる', b2:'コンシーラーを毎日塗り続けなくていい', b3:'痛み・ダウンタイムほぼ0', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'コンシーラーに毎月お金かけ続ける方がもったいくね？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      nose:         { compare:'ノーズシャドウ', product:'鼻整形', num:'理想の鼻筋', weak:'立体感を演出するだけで根本は変わらない', num2:'理想の鼻筋', b1:'理想の形を長期間キープできる', b2:'ノーズシャドウを毎日塗り続けなくていい', b3:'ダウンタイムが短い', time:'最短30分', pain:'痛みは少なくダウンタイムも短め', irony:'ノーズシャドウに毎月お金かけ続ける方がもったいくね？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
     },
     toFieldValues: d => ({
       0: { compare: d.compare, product: d.product, num: d.num },
@@ -455,6 +553,8 @@ const REF_CONFIGS = {
       {value:'double',       label:'二重整形'},
       {value:'thread_lift',  label:'糸リフト'},
       {value:'acne',         label:'ニキビ治療'},
+      {value:'hyaluronic',   label:'ヒアルロン酸注射'},
+      {value:'nose',         label:'鼻整形'},
     ],
     templates: {
       fat_dissolve: { menu:'脂肪溶解注射', market_price:'通常19,800円(税込)', price:'0円〜', effect_ex:'脂肪を溶かす', effect_st:'脂肪を溶かします', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'お腹痩せ', cta:'早めに詳細をチェックしてください' },
@@ -463,6 +563,8 @@ const REF_CONFIGS = {
       double:       { menu:'二重整形', market_price:'通常29,800円(税込)', price:'0円〜', effect_ex:'二重にする', effect_st:'二重にします', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'二重整形', cta:'早めに詳細をチェックしてください' },
       thread_lift:  { menu:'糸リフト', market_price:'通常価格', price:'0円〜', effect_ex:'たるみを引き上げる', effect_st:'たるみを引き上げます', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'たるみ改善', cta:'早めに詳細をチェックしてください' },
       acne:         { menu:'ニキビ治療', market_price:'相場数万円', price:'0円〜', effect_ex:'ニキビを根本から治す', effect_st:'ニキビを根本から治します', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'ニキビ改善', cta:'早めに詳細をチェックしてください' },
+      hyaluronic:   { menu:'ヒアルロン酸注射', market_price:'通常8,960円(税込)', price:'0円〜', effect_ex:'ほうれい線・唇を自然にふっくらさせる', effect_st:'ほうれい線・唇を自然にふっくらさせます', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'クマ取り再生注射\n脂肪溶解注射\nボトックス注射', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'ヒアルロン酸注射', cta:'早めに詳細をチェックしてください' },
+      nose:         { menu:'鼻整形', market_price:'通常相場数万円', price:'0円〜', effect_ex:'鼻を理想の形に整える', effect_st:'鼻を理想の形に整えます', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'鼻整形', cta:'早めに詳細をチェックしてください' },
     },
     toFieldValues: d => ({
       0: { menu: d.menu },
@@ -554,6 +656,8 @@ const REF_CONFIGS = {
       {value:'kuma',         label:'クマ取り再生注射'},
       {value:'acne',         label:'ニキビ治療'},
       {value:'thread_lift',  label:'糸リフト'},
+      {value:'hyaluronic',   label:'ヒアルロン酸注射'},
+      {value:'nose',         label:'鼻整形'},
     ],
     templates: {
       fat_dissolve: { price:'9,800円', menu:'脂肪溶解注射', worry:'ウエストが太すぎて', result:'お腹だし楽しくてたまりません', time:'15分', effect_num:'脂肪の減少', price_casual:'9千円台', reaction:'痩せた？ってめっちゃ聞かれる', safety:'10年間無事故で', downtime:'ダウンタイムほぼ0', cause:'脂肪細胞そのもの', lasting_effect:'太難い体質も目指せる', old_habit:'キツい運動や食事制限が', cta:'試さず夏迎えるとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
@@ -562,6 +666,8 @@ const REF_CONFIGS = {
       kuma:         { price:'9,800円', menu:'クマ取り再生注射', worry:'目の下のクマが気になって', result:'マスクなしのお出かけが楽しくてたまりません', time:'最短10分', effect_num:'若々しい印象', price_casual:'9千円台', reaction:'若くなった？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'クマの原因', lasting_effect:'クマが目立ちにくい肌を目指せる', old_habit:'コンシーラーへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
       acne:         { price:'9,800円', menu:'ニキビ治療', worry:'ニキビが繰り返して', result:'素肌のお出かけが楽しくてたまりません', time:'最短10分', effect_num:'繰り返さない肌', price_casual:'9千円台', reaction:'肌きれいになった？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'ニキビの原因', lasting_effect:'繰り返しにくい肌を目指せる', old_habit:'市販薬やスキンケアへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
       thread_lift:  { price:'9,800円', menu:'糸リフト', worry:'顔のたるみが気になって', result:'リフトアップした顔が楽しくてたまりません', time:'最短10分', effect_num:'リフトアップ効果', price_casual:'9千円台', reaction:'若くなった？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'たるみの原因', lasting_effect:'コラーゲン生成を促してリフトアップを目指せる', old_habit:'エステや美容グッズへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      hyaluronic:   { price:'8,960円', menu:'ヒアルロン酸注射', worry:'法令線・唇の薄さが気になって', result:'自然なふっくら感が楽しくてたまりません', time:'最短10分', effect_num:'自然なふっくら感', price_casual:'9千円台', reaction:'若くなった？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'コラーゲンの減少', lasting_effect:'効果が半年〜1年続くふっくら感を目指せる', old_habit:'プチプラコスメへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'クマ取り再生注射\n脂肪溶解注射\nボトックス注射', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      nose:         { price:'0円〜', menu:'鼻整形', worry:'鼻のコンプレックスが長年気になって', result:'マスクなしのお出かけが楽しくてたまりません', time:'最短30分', effect_num:'理想の鼻の形', price_casual:'0円〜', reaction:'整形した？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'鼻のコンプレックスの原因', lasting_effect:'長期間続く理想の鼻筋を目指せる', old_habit:'ノーズシャドウへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
     },
     toFieldValues: d => ({
       0: { price: d.price, menu: d.menu },
@@ -649,20 +755,24 @@ const REF_CONFIGS = {
       {value:'kuma',         label:'クマ取り再生注射'},
       {value:'acne',         label:'ニキビ治療'},
       {value:'thread_lift',  label:'糸リフト'},
+      {value:'hyaluronic',   label:'ヒアルロン酸注射'},
+      {value:'nose',         label:'鼻整形'},
     ],
     templates: {
-      fat_dissolve: { price:'0円〜', menu:'脂肪溶解注射', normal_price:'通常59,400円', price_per:'0円〜', bonus1:'無料カウンセリング・施術後ケア', seats:'30', bonus2:'約3万円相当の施術オプション', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
-      picolaser:    { price:'0円〜', menu:'ピコレーザー', normal_price:'通常29,400円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', seats:'30', bonus2:'約3万円相当の美容施術', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'イオン導入\nサリチル酸ピーリング\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
-      double:       { price:'0円〜', menu:'二重整形', normal_price:'通常29,800円', price_per:'0円〜', bonus1:'麻酔代・お薬代・ドクター指名料無料', seats:'5', bonus2:'交通費最大3万円サポート', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', bonus:'交通費も最大3万円負担' },
-      kuma:         { price:'0円〜', menu:'クマ取り再生注射', normal_price:'通常29,400円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', seats:'30', bonus2:'約3万円相当の美容施術', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
-      acne:         { price:'0円〜', menu:'ニキビ治療', normal_price:'通常相場数万円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', seats:'30', bonus2:'約3万円相当の美容施術', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
-      thread_lift:  { price:'0円〜', menu:'糸リフト', normal_price:'通常相場数万円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', seats:'30', bonus2:'約3万円相当の美容施術', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      fat_dissolve: { price:'0円〜', menu:'脂肪溶解注射', normal_price:'19,800円(税込)', price_per:'0円〜', bonus1:'無料カウンセリング・施術後ケア', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      picolaser:    { price:'0円〜', menu:'ピコレーザー', normal_price:'9,800円(税込)', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'イオン導入\nサリチル酸ピーリング\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      double:       { price:'0円〜', menu:'二重整形', normal_price:'29,800円(税込)', price_per:'0円〜', bonus1:'麻酔代・お薬代・ドクター指名料無料', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', bonus:'交通費も最大3万円負担' },
+      kuma:         { price:'0円〜', menu:'クマ取り再生注射', normal_price:'9,800円(税込)', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      acne:         { price:'0円〜', menu:'ニキビ治療', normal_price:'相場数万円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      thread_lift:  { price:'0円〜', menu:'糸リフト', normal_price:'相場数万円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      hyaluronic:   { price:'0円〜', menu:'ヒアルロン酸注射', normal_price:'8,960円(税込)', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'クマ取り再生注射\n脂肪溶解注射\nボトックス注射', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      nose:         { price:'0円〜', menu:'鼻整形', normal_price:'相場数万円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
     },
     toFieldValues: d => ({
       0: { price: d.price, menu: d.menu },
       1: { price: d.price, menu: d.menu },
       2: { normal_price: d.normal_price, menu: d.menu, price: d.price },
-      3: { bonus1: d.bonus1, seats: d.seats, bonus2: d.bonus2 },
+      3: { bonus1: d.bonus1 },
       4: { treatments: d.treatments, extra_price: d.extra_price, bonus: d.bonus },
       5: { worry: d.worry },
       6: { price_per: d.price_per, no_push: d.no_push },
@@ -692,13 +802,11 @@ const REF_CONFIGS = {
         ],
         build: v => `通常${p(v.normal_price)}はする\n${p(v.menu)}の料金が\n${p(v.price)}で受けられて`
       },
-      { title: '追加特典', desc: '先着特典でさらに価値を積み上げる',
+      { title: '追加特典', desc: '特典内容を訴求',
         fields: [
-          { id:'bonus1', label:'特典内容',   ph:'無料カウンセリング・施術後ケア' },
-          { id:'seats',  label:'先着人数',   ph:'30' },
-          { id:'bonus2', label:'先着限定特典', ph:'約3万円相当の施術オプション' },
+          { id:'bonus1', label:'特典内容', ph:'無料カウンセリング・施術後ケア' },
         ],
-        build: v => `今この動画からご予約いただくとさらに\n${p(v.bonus1)}に加えて\n各店舗先着${p(v.seats)}名様限定\n${p(v.bonus2)}もついてくる`
+        build: v => `今この動画からご予約いただくとさらに\n${p(v.bonus1)}もついてくる`
       },
       { title: '追加施術', desc: '主施術以外に付けるサービス・特典',
         fields: [
@@ -922,12 +1030,14 @@ function setTargetVariant(variantIdx) {
   refs[activeRefIdx].fieldValues[0].target = variant;
   renderForm();
   render();
+  scheduleSave();
 }
 
 function onFieldInput(bi, fid, val) {
   if (!refs[activeRefIdx].fieldValues[bi]) refs[activeRefIdx].fieldValues[bi] = {};
   refs[activeRefIdx].fieldValues[bi][fid] = val;
   render();
+  scheduleSave();
 }
 
 function render() {
@@ -947,6 +1057,7 @@ function switchRef(i) {
 
 function onUrlInput(val) {
   refs[activeRefIdx].videoUrl = val;
+  scheduleSave();
 }
 
 function addRef() {
@@ -955,6 +1066,7 @@ function addRef() {
   renderRefPills();
   renderForm();
   render();
+  scheduleSave();
 }
 
 function deleteRef(e, i) {
@@ -965,6 +1077,7 @@ function deleteRef(e, i) {
   renderRefPills();
   renderForm();
   render();
+  scheduleSave();
 }
 
 function loadTemplate(key) {
@@ -978,6 +1091,7 @@ function loadTemplate(key) {
   refs[activeRefIdx].targetVariants = d.targetVariants || [];
   renderForm();
   render();
+  scheduleSave();
 }
 
 function clearAll() {
@@ -986,6 +1100,7 @@ function clearAll() {
   refs[activeRefIdx].targetVariants = [];
   renderForm();
   render();
+  scheduleSave();
 }
 
 function copyText() {
@@ -1114,6 +1229,7 @@ function addMCr() {
   crs.push({ name:`CR-${n[crs.length]||crs.length+1}`, rows:[] });
   mPage.crIdx = crs.length - 1;
   renderMetricsPage();
+  scheduleSave();
 }
 
 function deleteMCr(e, i) {
@@ -1123,6 +1239,7 @@ function deleteMCr(e, i) {
   crs.splice(i, 1);
   mPage.crIdx = Math.min(mPage.crIdx, crs.length-1);
   renderMetricsPage();
+  scheduleSave();
 }
 
 function onMCrName(val) {
@@ -1131,6 +1248,7 @@ function onMCrName(val) {
   const tabs = document.querySelectorAll('.cr-tab');
   const tab = tabs[mPage.crIdx];
   if (tab) tab.childNodes[0].textContent = val || `CR-${mPage.crIdx+1}`;
+  scheduleSave();
 }
 
 function addMRow() {
@@ -1144,6 +1262,7 @@ function addMRow() {
   }
   cr.rows.push({ date:nextDate, impressions:'', views:'', clicks:'', ctr:'', cvr:'', cv:'', cpa:'', spend:'' });
   renderMetricsPage();
+  scheduleSave();
 }
 
 function deleteMRow(ri) {
@@ -1151,6 +1270,7 @@ function deleteMRow(ri) {
   if (!cr) return;
   cr.rows.splice(ri, 1);
   renderMetricsPage();
+  scheduleSave();
 }
 
 function onMCell(ri, fid, val) {
@@ -1158,6 +1278,7 @@ function onMCell(ri, fid, val) {
   if (!cr || !cr.rows[ri]) return;
   cr.rows[ri][fid] = val;
   drawMChart();
+  scheduleSave();
 }
 
 function setMMetric(metric) {
@@ -1267,7 +1388,7 @@ function importMCSV(input) {
       return row;
     }).filter(r=>Object.values(r).some(v=>v));
     const cr = refs[mPage.refIdx].metrics[mPage.crIdx];
-    if(cr){ cr.rows=rows; renderMetricsPage(); }
+    if(cr){ cr.rows=rows; renderMetricsPage(); scheduleSave(); }
     input.value='';
   };
   reader.readAsText(file,'UTF-8');
@@ -1381,9 +1502,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  renderRefPills();
-  renderForm();
-  render();
+  fbLoad();
 });
 </script>
 <!-- 数値結果ページ -->
