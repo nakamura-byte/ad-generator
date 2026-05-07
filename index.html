@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>広告構成ジェネレーター</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif; background: #f2f2f7; color: #1c1c1e; min-height: 100vh; }
+  header { background: #fff; border-bottom: 1px solid #e5e5ea; padding: 18px 32px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  header .badge { background: #6366f1; color: #fff; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+  .panel-form { display: flex; flex-direction: column; gap: 16px; }
+  .block-card { background: #fff; border-radius: 14px; padding: 20px 22px; border: 1.5px solid transparent; transition: border-color 0.15s; }
+  .block-card:focus-within { border-color: #6366f1; }
+  .card-title { font-size: 14px; font-weight: 700; color: #1c1c1e; }
+  .card-desc  { font-size: 11px; color: #8e8e93; margin-top: 3px; }
+  .block-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .block-num { width: 26px; height: 26px; background: #6366f1; color: #fff; border-radius: 8px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .field-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .field-row:last-child { margin-bottom: 0; }
+  label { font-size: 12px; font-weight: 600; color: #48484a; }
+  input[type="text"], textarea { width: 100%; border: 1.5px solid #e5e5ea; border-radius: 9px; padding: 9px 12px; font-size: 14px; font-family: inherit; color: #1c1c1e; background: #fafafa; transition: border-color 0.15s, background 0.15s; line-height: 1.55; }
+  input[type="text"]:focus, textarea:focus { outline: none; border-color: #6366f1; background: #fff; }
+  textarea { resize: vertical; min-height: 72px; line-height: 1.7; }
+  .ref-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .ref-pill { display: flex; align-items: center; gap: 6px; border: 1.5px solid #e5e5ea; border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 600; cursor: pointer; background: #fff; color: #48484a; font-family: inherit; transition: all 0.15s; }
+  .ref-pill:hover { border-color: #6366f1; color: #6366f1; }
+  .ref-pill.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+  .ref-pill-del { opacity: 0.6; font-size: 13px; transition: opacity 0.1s; }
+  .ref-pill-del:hover { opacity: 1; }
+  .btn-add-ref { width: 100%; background: none; border: 1.5px dashed #c7c7cc; border-radius: 9px; padding: 7px; font-size: 12px; color: #6366f1; font-weight: 600; cursor: pointer; font-family: inherit; transition: border-color 0.15s; }
+  .btn-add-ref:hover { border-color: #6366f1; }
+  .template-bar { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .template-bar label { font-size: 12px; font-weight: 600; color: #48484a; white-space: nowrap; }
+  select { flex: 1; border: 1.5px solid #e5e5ea; border-radius: 9px; padding: 8px 12px; font-size: 13px; font-family: inherit; color: #1c1c1e; background: #fff; cursor: pointer; }
+  select:focus { outline: none; border-color: #6366f1; }
+  .btn-reset { background: none; border: 1.5px solid #e5e5ea; border-radius: 9px; padding: 8px 14px; font-size: 12px; font-weight: 600; color: #8e8e93; cursor: pointer; white-space: nowrap; font-family: inherit; transition: border-color 0.15s, color 0.15s; }
+  .btn-reset:hover { border-color: #6366f1; color: #6366f1; }
+  .variant-chips { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .variant-chip { border: 1px solid #e5e5ea; border-radius: 7px; padding: 5px 10px; font-size: 11px; cursor: pointer; background: #f9f9fb; color: #48484a; font-family: inherit; text-align: left; line-height: 1.5; transition: all 0.12s; display: flex; align-items: baseline; gap: 7px; }
+  .variant-chip:hover { border-color: #6366f1; color: #6366f1; background: #f0f0ff; }
+  .variant-chip.vc-active { border-color: #6366f1; background: #6366f1; color: #fff; }
+  .vc-label { font-weight: 700; flex-shrink: 0; opacity: 0.7; }
+  .panel-preview { position: sticky; top: 78px; height: calc(100vh - 106px); display: flex; flex-direction: column; gap: 10px; }
+  .preview-header { display: flex; justify-content: flex-end; flex-shrink: 0; }
+  .btn-copy { background: #6366f1; color: #fff; border: none; border-radius: 10px; padding: 9px 20px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.15s, transform 0.1s; font-family: inherit; }
+  .btn-copy:hover { background: #4f46e5; }
+  .btn-copy:active { transform: scale(0.97); }
+  .btn-copy.copied { background: #34c759; }
+  .preview-box { background: #fff; border-radius: 14px; padding: 24px 22px; flex: 1; overflow-y: auto; font-size: 15px; line-height: 1.9; color: #1c1c1e; white-space: pre-wrap; word-break: break-all; border: 1.5px solid #e5e5ea; min-height: 0; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .panel-preview { position: static; height: auto; } }
+  .header-right { margin-left:auto; display:flex; align-items:center; gap:8px; position:relative; }
+  .gs-sync-time { font-size:11px; color:#8e8e93; white-space:nowrap; }
+  .btn-gs { background:#34c759; color:#fff; border:none; border-radius:10px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:6px; transition:background 0.15s,opacity 0.15s; white-space:nowrap; }
+  .btn-gs:hover { background:#28a745; }
+  .btn-gs:disabled { opacity:0.6; cursor:not-allowed; }
+  .btn-gs-cfg { width:30px; height:30px; border-radius:8px; border:1.5px solid #e5e5ea; background:#fff; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#8e8e93; transition:all 0.15s; flex-shrink:0; }
+  .btn-gs-cfg:hover { border-color:#6366f1; color:#6366f1; }
+  .gs-panel { position:absolute; top:44px; right:0; background:#fff; border-radius:14px; box-shadow:0 8px 36px rgba(0,0,0,0.15); padding:18px 20px; width:380px; z-index:200; display:none; border:1.5px solid #e5e5ea; }
+  .gs-panel.open { display:block; }
+  .gs-panel-title { font-size:13px; font-weight:700; margin-bottom:4px; color:#1c1c1e; }
+  .gs-panel-desc { font-size:11px; color:#8e8e93; margin-bottom:14px; line-height:1.6; }
+  .gs-step { font-size:11px; font-weight:700; color:#6366f1; margin:10px 0 4px; }
+  .gs-status { font-size:11px; padding:6px 10px; border-radius:7px; margin-top:10px; }
+  .gs-status.ok { background:#e8f8ed; color:#1a8c3a; }
+  .gs-status.err { background:#fff0f0; color:#c0392b; }
+  .btn-metrics { width:100%; margin-top:14px; padding:10px 14px; background:#f2f2f7; border:none; border-radius:9px; font-size:12px; font-weight:700; color:#48484a; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:space-between; transition:background 0.15s; }
+  .btn-metrics:hover { background:#e5e5f7; color:#6366f1; }
+  .metrics-badge { font-size:11px; font-weight:600; color:#6366f1; }
+  .mpage { position:fixed; inset:0; background:#f2f2f7; z-index:500; display:none; flex-direction:column; }
+  .mpage-header { background:#fff; border-bottom:1.5px solid #e5e5ea; padding:14px 24px; display:flex; align-items:center; gap:14px; flex-shrink:0; }
+  .btn-mback { background:none; border:none; font-size:14px; font-weight:700; color:#6366f1; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:5px; padding:6px 12px; border-radius:8px; transition:background 0.15s; }
+  .btn-mback:hover { background:#f0f0ff; }
+  .mpage-title { font-size:16px; font-weight:700; flex:1; }
+  .mpage-body { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:14px; }
+  .cr-tabs { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .cr-tab { padding:5px 14px; border-radius:20px; border:1.5px solid #e5e5ea; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:#48484a; font-family:inherit; transition:all 0.15s; display:inline-flex; align-items:center; gap:5px; }
+  .cr-tab.active { background:#6366f1; border-color:#6366f1; color:#fff; }
+  .cr-tab-del { opacity:0.5; font-size:13px; transition:opacity 0.1s; }
+  .cr-tab-del:hover { opacity:1; }
+  .btn-add-cr { padding:5px 12px; border-radius:20px; border:1.5px dashed #c7c7cc; font-size:12px; font-weight:600; color:#6366f1; background:none; cursor:pointer; font-family:inherit; transition:border-color 0.15s; }
+  .btn-add-cr:hover { border-color:#6366f1; }
+  .mpage-section { background:#fff; border-radius:14px; padding:18px 20px; }
+  .msec-title { font-size:13px; font-weight:700; color:#1c1c1e; margin-bottom:12px; }
+  .cr-toolbar { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+  .metric-toggles { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .metric-toggle { padding:5px 12px; border-radius:7px; border:1.5px solid #e5e5ea; font-size:11px; font-weight:600; cursor:pointer; background:#fff; color:#48484a; font-family:inherit; transition:all 0.15s; }
+  .metric-toggle.active { background:#6366f1; border-color:#6366f1; color:#fff; }
+  .chart-wrap { background:#f9f9fb; border-radius:12px; padding:14px 16px; }
+  .chart-wrap canvas { display:block; width:100%; height:auto; }
+  .table-wrap { overflow-x:auto; margin-top:4px; }
+  .metrics-tbl { width:100%; border-collapse:collapse; font-size:12px; }
+  .metrics-tbl th { background:#f2f2f7; padding:7px 8px; text-align:left; font-weight:700; white-space:nowrap; border-bottom:1.5px solid #e5e5ea; font-size:11px; }
+  .metrics-tbl td { padding:2px 4px; border-bottom:1px solid #f2f2f7; }
+  .metrics-tbl td input { width:100%; border:none; background:transparent; font-size:12px; font-family:inherit; color:#1c1c1e; padding:5px 6px; border-radius:4px; min-width:60px; }
+  .metrics-tbl td input:focus { outline:none; background:#f0f0ff; }
+  .metrics-tbl tr:hover td { background:#fafafa; }
+  .tbl-del-btn { background:none; border:none; color:#c7c7cc; cursor:pointer; font-size:12px; padding:2px 8px; transition:color 0.1s; }
+  .tbl-del-btn:hover { color:#ff3b30; }
+  .btn-add-row { background:none; border:1.5px dashed #c7c7cc; border-radius:7px; padding:6px 16px; font-size:12px; color:#6366f1; font-weight:600; cursor:pointer; font-family:inherit; margin-top:8px; transition:border-color 0.15s; }
+  .btn-add-row:hover { border-color:#6366f1; }
+  .btn-csv { padding:7px 14px; border-radius:8px; border:1.5px solid #e5e5ea; font-size:12px; font-weight:600; color:#48484a; background:#fff; cursor:pointer; font-family:inherit; transition:border-color 0.15s,color 0.15s; white-space:nowrap; }
+  .btn-csv:hover { border-color:#6366f1; color:#6366f1; }
+  .csv-tip { font-size:11px; color:#6366f1; cursor:pointer; text-decoration:underline; white-space:nowrap; align-self:center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>広告構成ジェネレーター</h1>
+  <span class="badge">自動生成対応</span>
+  <div class="header-right">
+    <span class="gs-sync-time" id="gsSyncTime"></span>
+    <button class="btn-gs" id="gsBtn" onclick="syncToSheets()">⟳ スプレッドシート同期</button>
+    <button class="btn-gs-cfg" onclick="toggleGsPanel()" title="設定">⚙</button>
+    <div class="gs-panel" id="gsPanel">
+      <div class="gs-panel-title">Googleスプレッドシート連携</div>
+      <div class="gs-panel-desc">Apps ScriptのデプロイURLを貼り付けると、全データをスプレッドシートに同期できます。</div>
+      <div class="gs-step">Apps Script デプロイURL</div>
+      <input type="text" id="gsUrlInput" placeholder="https://script.google.com/macros/s/..." style="width:100%;margin-bottom:8px;border:1.5px solid #e5e5ea;border-radius:9px;padding:8px 10px;font-size:12px;font-family:inherit;">
+      <div style="display:flex;gap:8px;">
+        <button onclick="saveGsUrl()" style="flex:1;padding:8px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">保存</button>
+        <button onclick="clearGsUrl()" style="padding:8px 12px;background:none;border:1.5px solid #e5e5ea;border-radius:8px;font-size:12px;color:#8e8e93;cursor:pointer;font-family:inherit;">削除</button>
+      </div>
+      <div id="gsStatus"></div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="panel-form">
+    <div class="block-card">
+      <div class="card-title">ベース参考</div>
+      <div class="card-desc">参考を選ぶとブロック構成が切り替わります</div>
+      <div style="margin-top:14px;">
+        <div class="ref-pills" id="refPills"></div>
+        <button class="btn-add-ref" onclick="addRef()">＋ 参考を追加</button>
+      </div>
+    </div>
+    <div class="block-card" id="templateCard" style="display:none;">
+      <div class="card-title">ベースデータ</div>
+      <div class="card-desc">施術を選択するとフィールドに一括入力されます</div>
+      <div class="template-bar">
+        <label>施術メニュー</label>
+        <select id="templateSelect" onchange="loadTemplate(this.value)">
+          <option value="">― 選択してください ―</option>
+        </select>
+        <button class="btn-reset" onclick="clearAll()">クリア</button>
+      </div>
+    </div>
+    <div id="blockForm"></div>
+  </div>
+
+  <div class="panel-preview">
+    <div class="preview-header">
+      <button class="btn-copy" id="copyBtn" onclick="copyText()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        コピー
+      </button>
+    </div>
+    <div class="preview-box" id="preview"></div>
+  </div>
+</div>
+
+<script>
+function p(v) { return (v || '').trim() || '＿＿＿'; }
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+const REF_CONFIGS = {
+
+  // ===== TCB 7ブロック =====
+  tcb7: {
+    label: 'TCB 7ブロック',
+    menuOptions: [
+      {value:'picolaser',    label:'ピコレーザー'},
+      {value:'double',       label:'二重整形'},
+      {value:'thread_lift',  label:'糸リフト'},
+      {value:'kuma',         label:'クマ取り再生注射'},
+      {value:'fat_dissolve', label:'脂肪溶解注射'},
+      {value:'acne',         label:'ニキビ治療'},
+      {value:'hyaluronic',   label:'ヒアルロン酸注射'},
+      {value:'nose',         label:'鼻整形'},
+    ],
+    templates: {
+      picolaser:    { target:'金欠でシミ治療諦めてた女性に', targetVariants:['金欠でシミ治療諦めてた女性に','金欠でピコレーザー諦めてた女性に','0円〜ならピコレーザー受けたい女性に','シミ・そばかす全滅させたい女性に','高くてシミ治療を諦めていた女性に','高くてピコレーザー諦めていた女性に'], audience:'方', desc:'ここまでツルスベ肌を目指せるピコレーザー', menu:'ピコレーザー', price:'0円〜', c1:'どうせ追加料金とられる', c2:'営業しつこそう', reason:'症例データを集めていて', treatments:'イオン導入\nサリチル酸ピーリング\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担', limit_reason:'症例データ集めのキャンペーンで枠が決まっているので', seats:'この動画から予約した先着5名限定', cta:'予約枠だけでも確保しておいてください' },
+      double:       { target:'二重整形したいけど金欠で諦めている方へ', targetVariants:['4,800円なら二重整形したい女性を探しています','4,800円なら二重整形試したい女性へ','アイプチめんどくさいから二重整形したい方へ','4,800円なら二重整形したい方へ','金欠だから4,800円なら二重整形したい方へ','二重整形したいけど金欠で諦めている方へ'], audience:'方', desc:'腫れが少なく自然な仕上がりの二重整形', menu:'二重（埋没法）', price:'0円〜', c1:'どうせ高額プランを勧められる', c2:'術後が不自然になりそう', reason:'症例データを集めていて', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', bonus:'交通費も最大3万円負担', limit_reason:'症例データ集めのキャンペーンで枠が決まっているので', seats:'この動画から予約した先着5名限定', cta:'今すぐ無料カウンセリングだけでも予約してみてください' },
+      thread_lift:  { target:'たるみが気になってきた方へ', targetVariants:['金欠で糸リフト諦めてた方に','高くて糸リフト諦めていた方に','0円〜なら糸リフト受けてみたい方に','顔のたるみが最近気になってきた方に','糸リフトしたいけど金欠で諦めている方へ','たるみをどうにかしたいって方を探しています！'],audience:'方', desc:'メスを使わずリフトアップできる糸リフト', menu:'糸リフト', price:'0円〜', c1:'どうせ本数を増やして高くなる', c2:'効果がすぐ落ちそう', reason:'症例データを集めていて', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費も最大3万円負担', limit_reason:'症例データ集めのキャンペーンで枠が決まっているので', seats:'この動画から予約した先着5名限定', cta:'まずは無料カウンセリングの枠だけ押さえておいてください' },
+      kuma:         { target:'目の下のクマに悩んでいる方に', targetVariants:['金欠でクマ取り諦めてた方に','高くてクマ取り諦めていた方に','0円〜ならクマ取り受けてみたい方に','クマで老けて見られるのが嫌な方に','クマ取りしたいけど金欠で諦めている方へ','目の下のクマをどうにかしたいって方を探しています！'],audience:'方', desc:'切らずにクマを改善できるクマ取り再生注射', menu:'クマ取り再生注射', price:'0円〜', c1:'どうせ追加で何本も打たれる', c2:'内出血が長引きそう', reason:'症例データを集めていて', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担', limit_reason:'症例データ集めのキャンペーンで枠が決まっているので', seats:'この動画から予約した先着5名限定', cta:'予約枠だけでも先に確保しておいてください' },
+      fat_dissolve: { target:'食事制限しても部分痩せできない方に', targetVariants:['金欠で脂肪溶解諦めてた方に','高くて脂肪溶解諦めていた方に','0円〜なら脂肪溶解やってみたい方に','食事制限しても痩せられなくて悩んでいる方に','脂肪溶解したいけど金欠で諦めている方へ','部分痩せしたいけどお金がないって方を探しています！'],audience:'方', desc:'気になる部位にピンポイントで効く脂肪溶解注射', menu:'脂肪溶解注射', price:'0円〜', c1:'どうせ何本も打たされて高くなる', c2:'効果が出るか不安', reason:'症例データを集めていて', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費も最大3万円負担', limit_reason:'症例データ集めのキャンペーンで枠が決まっているので', seats:'この動画から予約した先着5名限定', cta:'まずは無料相談の枠だけ取っておいてください' },
+      acne:         { target:'ちょっとチクっとしてもいいから顔のニキビ全滅させたい方を探しています！', targetVariants:['ちょっとチクっとしてもいいから顔のニキビ全滅させたい方を探しています！','ちょっと痛くてもいいから顔のニキビ消したい方を探しています！','金欠だからニキビ治療諦めてますって方を探しています！','0円〜ならニキビ治療やってみたいって方を探しています！','ニキビ跡の治療したいけどお金がないって方を探しています！','高くてニキビ治療諦めていた方を探しています！'], audience:'方', desc:'根本から原因を改善するニキビ治療', menu:'ニキビ治療', price:'0円〜', c1:'どうせ高い薬を処方される', c2:'すぐ再発しそう', reason:'症例データを集めていて', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費も最大3万円負担', limit_reason:'症例データ集めのキャンペーンで枠が決まっているので', seats:'この動画から予約した先着5名限定', cta:'無料カウンセリング枠だけでも先に取っておいてください' },
+      hyaluronic:   { target:'法令線や唇の薄さが気になってきた方に', targetVariants:['金欠でヒアルロン酸諦めてた方に','高くてヒアルロン酸諦めていた方に','0円〜ならヒアルロン酸試してみたい方に','法令線・ほうれい線が気になってきた方に','ヒアルロン酸やってみたいけど金欠で諦めている方へ','老けて見られるのが嫌だって方を探しています！'],audience:'方', desc:'自然なボリュームを出せるヒアルロン酸注射', menu:'ヒアルロン酸注射', price:'0円〜', c1:'どうせ不自然にパンパンになる', c2:'追加本数でどんどん高くなりそう', reason:'症例データを集めていて', treatments:'クマ取り再生注射\n脂肪溶解注射\nボトックス注射', extra_price:'0円〜', bonus:'交通費も最大3万円負担', limit_reason:'症例データ集めのキャンペーンで枠が決まっているので', seats:'この動画から予約した先着5名限定', cta:'まずは予約枠だけ確保しておいてください' },
+      nose:         { target:'鼻のコンプレックスを長年抱えてきた方に', targetVariants:['金欠で鼻整形諦めてた方に','高くて鼻整形諦めていた方に','0円〜なら鼻整形試してみたい方に','ずっと鼻にコンプレックスがあった方に','鼻整形したいけど金欠で諦めている方へ','鼻が気になって自信が持てないって方を探しています！'],audience:'方', desc:'顔のバランスを整える鼻整形', menu:'鼻整形', price:'0円〜', c1:'どうせ術後に不自然になる', c2:'後遺症が残りそうで怖い', reason:'症例データを集めていて', treatments:'', extra_price:'0円〜', bonus:'交通費も最大3万円負担', limit_reason:'症例データ集めのキャンペーンで枠が決まっているので', seats:'この動画から予約した先着5名限定', cta:'無料カウンセリングの予約だけでも今すぐ入れておいてください' },
+    },
+    toFieldValues: d => ({
+      0: { target: d.target, desc: d.desc, price: d.price, audience: d.audience },
+      1: { price: d.price },
+      2: { c1: d.c1, c2: d.c2 },
+      3: { reason: d.reason, price: d.price, menu: d.menu },
+      4: { treatments: d.treatments, extra_price: d.extra_price, bonus: d.bonus },
+      5: { limit_reason: d.limit_reason },
+      6: { seats: d.seats, cta: d.cta },
+    }),
+    blocks: [
+      { title: 'ターゲット悩み＋オファー', desc: '誰に訴え、何をいくらで提供するか',
+        fields: [
+          { id:'target',   label:'ターゲット呼びかけ', ph:'金欠でシミ治療諦めてた女性に' },
+          { id:'desc',     label:'施術の説明文',       ph:'ここまでツルスベ肌を目指せるピコレーザー' },
+          { id:'price',    label:'価格',               ph:'0円〜' },
+          { id:'audience', label:'対象',               ph:'方' },
+        ],
+        build: v => `${p(v.target)}\n朗報です！\nただいまTCBでは\n${p(v.desc)}を\n${p(v.price)}で受けてくださる\n${p(v.audience)}を募集しています！`
+      },
+      { title: '不安払拭', desc: '勧誘・追加料金への疑念を先に否定する',
+        fields: [{ id:'price', label:'価格', ph:'0円〜' }],
+        build: v => `もちろん\n無理な勧誘・追加料金はありません\n支払いは本当に${p(v.price)}\nなのですが`
+      },
+      { title: '懸念代弁', desc: 'ユーザーの疑念・反論を先に言い切る',
+        fields: [
+          { id:'c1', label:'懸念①', ph:'どうせ追加料金とられる' },
+          { id:'c2', label:'懸念②', ph:'営業しつこそう' },
+        ],
+        build: v => `${p(v.c1)}\n${p(v.c2)}\nとか言って\n怪しんでるお客さんが多いんですけど！！`
+      },
+      { title: 'できる理由', desc: 'なぜその価格で提供できるのかの根拠',
+        fields: [
+          { id:'reason', label:'理由',   ph:'症例データを集めていて' },
+          { id:'price',  label:'価格',   ph:'0円〜' },
+          { id:'menu',   label:'施術名', ph:'ピコレーザー' },
+        ],
+        build: v => `TCBでは現在\n${p(v.reason)}\n本当に${p(v.price)}で${p(v.menu)}が受けられる\nだけじゃなく！`
+      },
+      { title: '追加特典', desc: '主施術以外に付けるサービス・特典',
+        fields: [
+          { id:'treatments',  label:'追加施術（1行ずつ）', ph:'イオン導入\nサリチル酸ピーリング\n白玉点滴', type:'textarea' },
+          { id:'extra_price', label:'追加施術の価格', ph:'0円〜' },
+          { id:'bonus',       label:'特別特典',       ph:'交通費も最大3万円負担' },
+        ],
+        build: v => {
+          const lines = (v.treatments||'').split('\n').filter(t=>t.trim()).map(t=>`${t.trim()}も`).join('\n');
+          return `${lines||'＿＿＿も'}\n${p(v.extra_price)}でお付けします！\nさらに\n${p(v.bonus)}！`;
+        }
+      },
+      { title: '限定理由', desc: '希少性の根拠',
+        fields: [{ id:'limit_reason', label:'限定理由', ph:'症例データ集めのキャンペーンで枠が決まっているので' }],
+        build: v => `ただ1点だけ注意！\n${p(v.limit_reason)}\nこの豪華特典が受け取れるのは\nこの動画から予約した`
+      },
+      { title: '限定CTA', desc: '先着・緊急性でクロージング',
+        fields: [
+          { id:'seats', label:'先着人数', ph:'この動画から予約した先着5名限定' },
+          { id:'cta',   label:'CTA文',   ph:'予約枠だけでも確保しておいてください' },
+        ],
+        build: v => `${p(v.seats)}\n予約枠には限りがあるので\n今すぐ下のリンクから\n${p(v.cta)}`
+      },
+    ]
+  },
+
+  // ===== 参考① スルリム：比較型 6ブロック =====
+  ref1: {
+    label: '参考① スルリム（比較型）',
+    menuOptions: [
+      {value:'fat_dissolve', label:'脂肪溶解注射'},
+      {value:'picolaser',    label:'ピコレーザー'},
+      {value:'double',       label:'二重整形'},
+      {value:'hyaluronic',   label:'ヒアルロン酸注射'},
+      {value:'acne',         label:'ニキビ治療'},
+      {value:'thread_lift',  label:'糸リフト'},
+    ],
+    templates: {
+      fat_dissolve: { compare:'ジム', product:'脂肪溶解注射', num:'約35%の脂肪減少', weak:'確実に痩せる保証ない', num2:'最大35%の脂肪減少', b1:'減った脂肪は二度と戻らない', b2:'やめてもリバウンドの心配いらない', b3:'きつい運動も食事制限も必要ない', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'ジムであんなに頑張る時間も無駄じゃね？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      picolaser:    { compare:'スキンケア', product:'ピコレーザー', num:'シミの劇的な改善', weak:'毎日続けても根本から治せない', num2:'シミの劇的な改善', b1:'照射箇所のシミは再発しにくい', b2:'スキンケアを続けなくていい', b3:'痛み・ダウンタイムほぼ0', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'スキンケアに毎月何万もかけ続ける方がもったいくね？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'イオン導入\nサリチル酸ピーリング\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      double:       { compare:'テープ・アイプチ', product:'二重整形', num:'自然なぱっちり二重', weak:'毎日貼り直しが面倒で取れることもある', num2:'自然なぱっちり二重', b1:'一度施術したら毎日貼らなくていい', b2:'取れる心配がない', b3:'自然な仕上がりで整形とバレない', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'テープに毎月お金かけ続ける方がもったいくね？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', bonus:'交通費も最大3万円負担' },
+      hyaluronic:   { compare:'プチプラコスメ', product:'ヒアルロン酸注射', num:'自然なふっくら感', weak:'表面からじゃ保湿するだけで根本は変わらない', num2:'自然なふっくら感', b1:'内側からふっくら感が出る', b2:'効果が半年〜1年続く', b3:'痛み・ダウンタイムほぼ0', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'プチプラ何個も買い続ける方がコスパ悪くない？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'クマ取り再生注射\n脂肪溶解注射\nボトックス注射', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      acne:         { compare:'市販の薬', product:'ニキビ治療', num:'繰り返さない健康肌', weak:'表面を抑えるだけで根本が治らない', num2:'根本からの改善', b1:'原因から改善するから繰り返さない', b2:'肌荒れのループから抜け出せる', b3:'毎日薬を塗り続ける必要がない', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'市販薬に毎月お金かけ続ける方がもったいくね？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      thread_lift:  { compare:'エステ', product:'糸リフト', num:'段違いのリフトアップ効果', weak:'一時的な効果で翌日には戻る', num2:'段違いのリフトアップ効果', b1:'コラーゲン生成を促して肌質から改善', b2:'効果が1〜2年続く', b3:'痛み・ダウンタイムほぼ0', time:'最短10分', pain:'痛み・ダウンタイムほぼ0だった', irony:'エステ通い続ける方が長期的にコスパ悪くない？', benefit:'0円〜', soft_cta:'カウンセリングだけでもOKだったよ', limit:'予約埋まり次第リンク消えちゃうかもだから', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+    },
+    toFieldValues: d => ({
+      0: { compare: d.compare, product: d.product, num: d.num },
+      1: { compare: d.compare, weak: d.weak },
+      2: { num2: d.num2, product: d.product, b1: d.b1, b2: d.b2, b3: d.b3, compare: d.compare },
+      3: { time: d.time, pain: d.pain, irony: d.irony },
+      4: { benefit: d.benefit, soft_cta: d.soft_cta },
+      5: { treatments: d.treatments, extra_price: d.extra_price, bonus: d.bonus },
+      6: { limit: d.limit },
+    }),
+    blocks: [
+      { title: '比較フック', desc: '比較対象との優位性で注意を引く',
+        fields: [
+          { id:'compare', label:'比較対象', ph:'ジム' },
+          { id:'product', label:'商品名',   ph:'脂肪溶解注射' },
+          { id:'num',     label:'効果訴求', ph:'約35%' },
+        ],
+        build: v => `たけえ金払って${p(v.compare)}通い続けるより\n数回で${p(v.num)}を目指せる${p(v.product)}の方がコスパ良くね？`
+      },
+      { title: '不信感代弁', desc: '比較対象の弱点・不安を先に言い切る',
+        fields: [
+          { id:'compare', label:'比較対象',       ph:'ジム' },
+          { id:'weak',    label:'比較対象の弱点', ph:'確実に痩せる保証ない' },
+        ],
+        build: v => `だって${p(v.compare)}行っても${p(v.weak)}じゃん`
+      },
+      { title: 'オファー＋ベネフィット', desc: '商品の優位性・付加価値',
+        fields: [
+          { id:'num2',    label:'効果訴求',       ph:'最大35%' },
+          { id:'product', label:'商品名',         ph:'脂肪溶解注射' },
+          { id:'b1',      label:'ベネフィット①', ph:'減った脂肪は二度と戻らない' },
+          { id:'b2',      label:'ベネフィット②', ph:'やめてもリバウンドの心配いらない' },
+          { id:'b3',      label:'ベネフィット③', ph:'きつい運動も食事制限も必要ない' },
+          { id:'compare', label:'比較対象',       ph:'ジム' },
+        ],
+        build: v => `それなら数回で${p(v.num2)}を目指せる\n${p(v.product)}派だわ\n${p(v.product)}なら${p(v.b1)}から\nやめても${p(v.b2)}し\n${p(v.b3)}なら\n断然${p(v.compare)}でたっけぇ金払うより\n${p(v.product)}のがいいでしょ！！`
+      },
+      { title: '利便性', desc: '時間・痛みなど具体的な使いやすさ',
+        fields: [
+          { id:'time',  label:'施術時間',    ph:'最短10分' },
+          { id:'pain',  label:'痛み・DT',   ph:'痛み・ダウンタイムほぼ0だった' },
+          { id:'irony', label:'比較への皮肉', ph:'ジムであんなに頑張る時間も無駄じゃね？' },
+        ],
+        build: v => `しかもこれ${p(v.time)}で寝てたら終わるし\n${p(v.pain)}から\n${p(v.irony)}`
+      },
+      { title: 'CTA誘導', desc: '割引・予約を促す',
+        fields: [
+          { id:'benefit',  label:'価格・特典',     ph:'0円〜' },
+          { id:'soft_cta', label:'カジュアルCTA', ph:'カウンセリングだけでもOKだったよ' },
+        ],
+        build: v => `下のリンクから予約すれば${p(v.benefit)}で受けられるから\n気になった人はここから予約ね！\n${p(v.soft_cta)}`
+      },
+      { title: '追加施術', desc: '主施術以外に付けるサービス・特典',
+        fields: [
+          { id:'treatments',  label:'追加施術（1行ずつ）', ph:'ボトックス注射\nダイエット内服薬\n美白セット', type:'textarea' },
+          { id:'extra_price', label:'追加施術の価格', ph:'0円〜' },
+          { id:'bonus',       label:'特別特典', ph:'交通費も最大3万円負担' },
+        ],
+        build: v => {
+          const lines = (v.treatments||'').split('\n').filter(t=>t.trim()).map(t=>`${t.trim()}も`).join('\n');
+          return `${lines||'＿＿＿も'}\n${p(v.extra_price)}でお付けします！\nさらに\n${p(v.bonus)}！`;
+        }
+      },
+      { title: '限定感', desc: '希少性・緊急性でクロージング',
+        fields: [{ id:'limit', label:'限定理由', ph:'予約埋まり次第リンク消えちゃうかもだから' }],
+        build: v => `${p(v.limit)}\n消えてたらごめん！`
+      },
+    ]
+  },
+
+  // ===== 参考② TCBクマ取り：共感型 8ブロック =====
+  ref2: {
+    label: '参考② TCBクマ取り（共感型）',
+    menuOptions: [
+      {value:'kuma',         label:'クマ取り再生注射'},
+      {value:'picolaser',    label:'ピコレーザー'},
+      {value:'double',       label:'二重整形'},
+      {value:'thread_lift',  label:'糸リフト'},
+      {value:'fat_dissolve', label:'脂肪溶解注射'},
+      {value:'acne',         label:'ニキビ治療'},
+      {value:'hyaluronic',   label:'ヒアルロン酸注射'},
+      {value:'nose',         label:'鼻整形'},
+    ],
+    templates: {
+      kuma:         { target:'クマ取りしたいけど', condition:'痛いのは嫌な方', menu_short:'クマ取り', feature:'痛み・ダウンタイムほぼ0の', menu_full:'切らないクマ取り再生注射', shortage:'症例データが全然足りず', consequence:'このままだと店舗を増やせない状況', normal_price:'通常9,800円(税込)', price:'0円〜', effect:'-10歳若見え', feature2:'メスを使わない切らない施術', time:'最短10分', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', bonus:'交通費最大3万円クリニックがサポート', soft_cta:'無料のカウンセリングだけでもOK', seats:'この動画から予約した先着5名限定', cta:'損する前に予約枠の確保だけでもしておいてください' },
+      picolaser:    { target:'シミ・くすみを消したいけど', condition:'肌への負担が少ない方法を探している方', menu_short:'ピコレーザー', feature:'痛み・ダウンタイムほぼ0の', menu_full:'ピコレーザー照射', shortage:'症例データが全然足りず', consequence:'このままだと施術プログラムを拡充できない状況', normal_price:'通常9,800円(税込)', price:'0円〜', effect:'シミ・くすみが劇的に改善', feature2:'肌へのダメージが少ない最新レーザー', time:'最短10分', treatments:'イオン導入\nサリチル酸ピーリング\n白玉点滴', extra_price:'0円〜', bonus:'交通費最大3万円クリニックがサポート', soft_cta:'無料のカウンセリングだけでもOK', seats:'この動画から予約した先着5名限定', cta:'損する前に予約枠の確保だけでもしておいてください' },
+      double:       { target:'二重にしたいけど', condition:'腫れが少なく自然に仕上がる方法を探している方', menu_short:'二重整形', feature:'痛み・ダウンタイムほぼ0の', menu_full:'二重整形（埋没法）', shortage:'症例データが全然足りず', consequence:'このままだと新規クリニック展開ができない状況', normal_price:'通常29,800円(税込)', price:'0円〜', effect:'自然でぱっちりした二重', feature2:'腫れが最小限のナチュラル埋没法', time:'最短10分', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', bonus:'交通費最大3万円クリニックがサポート', soft_cta:'無料のカウンセリングだけでもOK', seats:'この動画から予約した先着5名限定', cta:'損する前に予約枠の確保だけでもしておいてください' },
+      thread_lift:  { target:'顔のたるみが気になってきたけど', condition:'メスを使わない方法を探している方', menu_short:'糸リフト', feature:'痛み・ダウンタイムほぼ0の', menu_full:'糸リフト（スレッドリフト）', shortage:'症例データが全然足りず', consequence:'このままだと施術メニューを増やせない状況', normal_price:'通常価格', price:'0円〜', effect:'-5歳のリフトアップ効果', feature2:'糸の力でコラーゲン生成を促す', time:'最短10分', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費最大3万円クリニックがサポート', soft_cta:'無料のカウンセリングだけでもOK', seats:'この動画から予約した先着5名限定', cta:'損する前に予約枠の確保だけでもしておいてください' },
+      fat_dissolve: { target:'食事制限しても部分痩せできないけど', condition:'手軽に脂肪にアプローチしたい方', menu_short:'脂肪溶解注射', feature:'痛み・ダウンタイムほぼ0の', menu_full:'部分痩せ脂肪溶解注射', shortage:'症例データが全然足りず', consequence:'このままだと部位別プログラムを開発できない状況', normal_price:'通常19,800円(税込)', price:'0円〜', effect:'気になる部位がスッキリ', feature2:'注射だから切らず傷も残らない', time:'最短10分', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費最大3万円クリニックがサポート', soft_cta:'無料のカウンセリングだけでもOK', seats:'この動画から予約した先着5名限定', cta:'損する前に予約枠の確保だけでもしておいてください' },
+      acne:         { target:'ニキビが繰り返して悩んでいるけど', condition:'肌への刺激が少ない治療を探している方', menu_short:'ニキビ治療', feature:'痛み・ダウンタイムほぼ0の', menu_full:'ニキビ治療プログラム', shortage:'症例データが全然足りず', consequence:'このままだと新プログラムのリリースができない状況', normal_price:'相場数万円', price:'0円〜', effect:'ニキビの原因から改善', feature2:'肌に優しい最新レーザー×内服で根本ケア', time:'最短10分', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費最大3万円クリニックがサポート', soft_cta:'無料のカウンセリングだけでもOK', seats:'この動画から予約した先着5名限定', cta:'損する前に予約枠の確保だけでもしておいてください' },
+      hyaluronic:   { target:'法令線や唇の薄さが気になってきたけど', condition:'自然な仕上がりを求めている方', menu_short:'ヒアルロン酸', feature:'痛み・ダウンタイムほぼ0の', menu_full:'ヒアルロン酸注射', shortage:'症例データが全然足りず', consequence:'このままだと部位別メニューを拡充できない状況', normal_price:'通常8,960円(税込)', price:'0円〜', effect:'自然なふっくら感と若々しさ', feature2:'針が細く腫れも最小限', time:'最短10分', treatments:'クマ取り再生注射\n脂肪溶解注射\nボトックス注射', extra_price:'0円〜', bonus:'交通費最大3万円クリニックがサポート', soft_cta:'無料のカウンセリングだけでもOK', seats:'この動画から予約した先着5名限定', cta:'損する前に予約枠の確保だけでもしておいてください' },
+      nose:         { target:'鼻のコンプレックスを解消したいけど', condition:'自然に仕上がる方法を探している方', menu_short:'鼻整形', feature:'痛み・ダウンタイムほぼ0の', menu_full:'鼻整形', shortage:'症例データが全然足りず', consequence:'このままだと鼻整形メニューを充実させられない状況', normal_price:'相場数万円', price:'0円〜', effect:'顔のバランスが整って垢抜け', feature2:'豊富な症例実績のある専門ドクターが担当', time:'最短10分', treatments:'', extra_price:'0円〜', bonus:'交通費最大3万円クリニックがサポート', soft_cta:'無料のカウンセリングだけでもOK', seats:'この動画から予約した先着5名限定', cta:'損する前に予約枠の確保だけでもしておいてください' },
+    },
+    toFieldValues: d => ({
+      0: { target: d.target, condition: d.condition },
+      1: { menu: d.menu_short },
+      2: { feature: d.feature, menu: d.menu_full },
+      3: { shortage: d.shortage, consequence: d.consequence },
+      4: { normal_price: d.normal_price, price: d.price, menu: d.menu_full, effect: d.effect, feature2: d.feature2, time: d.time },
+      5: { treatments: d.treatments, extra_price: d.extra_price, bonus: d.bonus },
+      6: { price: d.price, soft_cta: d.soft_cta },
+      7: { price: d.price, seats: d.seats, cta: d.cta },
+    }),
+    blocks: [
+      { title: 'ターゲット呼びかけ', desc: '悩みを特定して呼びかける',
+        fields: [
+          { id:'target',    label:'ターゲットの悩み', ph:'クマ取りしたいけど' },
+          { id:'condition', label:'ターゲットの条件', ph:'痛いのは嫌な方' },
+        ],
+        build: v => `${p(v.target)}\n${p(v.condition)}を探しています`
+      },
+      { title: '共感・肯定', desc: '「今まで受けなくて大正解」など背中を押す',
+        fields: [{ id:'menu', label:'施術名（短縮）', ph:'クマ取り' }],
+        build: v => `おめでとうございます\n今まで${p(v.menu)}受けなくて大正解`
+      },
+      { title: 'オファー提示', desc: '施術名・体験募集の告知',
+        fields: [
+          { id:'feature', label:'施術の特徴', ph:'痛み・ダウンタイムほぼ0の' },
+          { id:'menu',    label:'施術名',     ph:'切らないクマ取り再生注射' },
+        ],
+        build: v => `ただいまTCBでは\n${p(v.feature)}\n${p(v.menu)}の\nお試し体験者を募集中`
+      },
+      { title: 'できる理由', desc: '症例データ不足などキャンペーンの背景',
+        fields: [
+          { id:'shortage',    label:'不足状況', ph:'症例データが全然足りず' },
+          { id:'consequence', label:'結果',     ph:'このままだと店舗を増やせない状況' },
+        ],
+        build: v => `全国展開に向けより多くの症例データが必要なのに\n${p(v.shortage)}\n${p(v.consequence)}\nなので\nついに最終手段`
+      },
+      { title: 'ベネフィット＋不安払拭', desc: '効果・特徴と勧誘なしの安心感',
+        fields: [
+          { id:'normal_price', label:'通常価格',   ph:'通常9,800円(税込)' },
+          { id:'price',        label:'特別価格',   ph:'0円〜' },
+          { id:'menu',         label:'施術名',     ph:'切らないクマ取り再生注射' },
+          { id:'effect',       label:'効果',       ph:'-10歳若見え' },
+          { id:'feature2',     label:'施術の特徴', ph:'メスを使わない切らない施術' },
+          { id:'time',         label:'施術時間',   ph:'最短10分' },
+        ],
+        build: v => `予約枠に空きがある地域限定\n${p(v.normal_price)}する${p(v.menu)}を\n今月限定${p(v.price)}でお試しして欲しい\n実際に${p(v.price)}で体験した人は\n数回の施術で\n${p(v.effect)}を目指せる\n${p(v.feature2)}なので\n痛み・ダウンタイムほぼ0\n${p(v.time)}で終わるので\n施術直後から仕事も可能\nデータ集めのお試し体験募集なので\n追加料金や無理な勧誘も一切なし`
+      },
+      { title: '追加施術＋特典', desc: '追加施術と交通費サポートなど',
+        fields: [
+          { id:'treatments',  label:'追加施術（1行ずつ）', ph:'ボトックス注射\nダイエット内服薬\n美白セット', type:'textarea' },
+          { id:'extra_price', label:'追加施術の価格', ph:'0円〜' },
+          { id:'bonus',       label:'特別特典', ph:'交通費最大3万円クリニックがサポート' },
+        ],
+        build: v => {
+          const lines = (v.treatments||'').split('\n').filter(t=>t.trim()).map(t=>`${t.trim()}も`).join('\n');
+          return `${lines||'＿＿＿も'}\n${p(v.extra_price)}でお付けします！\nさらに\n${p(v.bonus)}`;
+        }
+      },
+      { title: '安心CTA準備', desc: 'カウンセリングだけでもOKなど柔らかい誘導',
+        fields: [
+          { id:'price',    label:'特別価格',    ph:'0円〜' },
+          { id:'soft_cta', label:'柔らかいCTA', ph:'無料のカウンセリングだけでもOK' },
+        ],
+        build: v => `それでも${p(v.price)}なんて不安な方は\n${p(v.soft_cta)}\nやる・やらないはその時判断できる`
+      },
+      { title: '限定CTA', desc: '先着・配信終了・最終クロージング',
+        fields: [
+          { id:'price', label:'特別価格', ph:'0円〜' },
+          { id:'seats', label:'先着',     ph:'この動画から予約した先着5名限定' },
+          { id:'cta',   label:'CTA',     ph:'損する前に予約枠の確保だけでもしておいてください' },
+        ],
+        build: v => `ただ流石に${p(v.price)}は赤字覚悟なので\n${p(v.seats)}\nこの動画も本日配信終了\n${p(v.cta)}`
+      },
+    ]
+  },
+
+  // ===== 参考③ TCB脂肪溶解：挑発型 9ブロック =====
+  ref3: {
+    label: '参考③ TCB脂肪溶解（挑発型）',
+    menuOptions: [
+      {value:'fat_dissolve', label:'脂肪溶解注射'},
+      {value:'picolaser',    label:'ピコレーザー'},
+      {value:'kuma',         label:'クマ取り再生注射'},
+      {value:'double',       label:'二重整形'},
+      {value:'thread_lift',  label:'糸リフト'},
+      {value:'acne',         label:'ニキビ治療'},
+    ],
+    templates: {
+      fat_dissolve: { menu:'脂肪溶解注射', market_price:'通常19,800円(税込)', price:'0円〜', effect_ex:'脂肪を溶かす', effect_st:'脂肪を溶かします', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'お腹痩せ', cta:'早めに詳細をチェックしてください' },
+      picolaser:    { menu:'ピコレーザー', market_price:'通常9,800円(税込)', price:'0円〜', effect_ex:'シミを消す', effect_st:'シミを消します', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'イオン導入\nサリチル酸ピーリング\n白玉点滴', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'シミ治療', cta:'早めに詳細をチェックしてください' },
+      kuma:         { menu:'クマ取り再生注射', market_price:'通常9,800円(税込)', price:'0円〜', effect_ex:'クマを消す', effect_st:'クマを消します', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'クマ取り', cta:'早めに詳細をチェックしてください' },
+      double:       { menu:'二重整形', market_price:'通常29,800円(税込)', price:'0円〜', effect_ex:'二重にする', effect_st:'二重にします', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'二重整形', cta:'早めに詳細をチェックしてください' },
+      thread_lift:  { menu:'糸リフト', market_price:'通常価格', price:'0円〜', effect_ex:'たるみを引き上げる', effect_st:'たるみを引き上げます', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'たるみ改善', cta:'早めに詳細をチェックしてください' },
+      acne:         { menu:'ニキビ治療', market_price:'相場数万円', price:'0円〜', effect_ex:'ニキビを根本から治す', effect_st:'ニキビを根本から治します', no_push:'無理な勧誘・追加料金・顔出し・口コミ', downtime:'痛み・ダウンタイムほぼ0', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', condition:'近隣にクリニックがない方', bonus:'交通費最大3万円補助いたします', deadline:'今月', appeal:'ニキビ改善', cta:'早めに詳細をチェックしてください' },
+    },
+    toFieldValues: d => ({
+      0: { menu: d.menu },
+      1: { market_price: d.market_price, menu: d.menu },
+      2: { market_price: d.market_price, menu: d.menu, price: d.price, effect: d.effect_ex },
+      3: { price: d.price },
+      4: { menu: d.menu, no_push: d.no_push, price: d.price, effect: d.effect_st },
+      5: { downtime: d.downtime },
+      6: { treatments: d.treatments, extra_price: d.extra_price, condition: d.condition, bonus: d.bonus },
+      7: { price: d.price, deadline: d.deadline },
+      8: { appeal: d.appeal, cta: d.cta },
+    }),
+    blocks: [
+      { title: 'ターゲット＋フック', desc: '疑い系ターゲットへの挑発的呼びかけ',
+        fields: [
+          { id:'menu', label:'施術名', ph:'脂肪溶解注射' },
+        ],
+        build: v => `TCBの${p(v.menu)}\n最初から疑ってる方\n絶対後悔しますよ？`
+      },
+      { title: 'オファー背景', desc: '以前の告知と集まらなかった経緯',
+        fields: [
+          { id:'market_price', label:'通常価格', ph:'通常19,800円(税込)' },
+          { id:'menu',         label:'施術名',   ph:'脂肪溶解注射' },
+        ],
+        build: v => `ただいまTCBでは\n${p(v.market_price)}する${p(v.menu)}を\n相場より安く受けれるとご案内\nしてたのに\n先月お客様がなかなか集まらなかったんです…`
+      },
+      { title: '価格発表', desc: '最終手段・特別価格の強調',
+        fields: [
+          { id:'market_price', label:'通常価格',     ph:'通常19,800円(税込)' },
+          { id:'menu',         label:'施術名',       ph:'脂肪溶解注射' },
+          { id:'price',        label:'特別価格',     ph:'0円〜' },
+          { id:'effect',       label:'効果（短縮）', ph:'脂肪を溶かす' },
+        ],
+        build: v => `こうなったらもう最終手段\n出しちゃいます！\n今月限定で${p(v.market_price)}の${p(v.menu)}を\nなんと${p(v.price)}にしちゃいます\n本当にお会計が${p(v.price)}で\n${p(v.effect)}！${p(v.effect)}！${p(v.effect)}！`
+      },
+      { title: '懸念代弁', desc: '「0円なわけない」系の疑念を先に代弁',
+        fields: [{ id:'price', label:'特別価格', ph:'0円〜' }],
+        build: v => `それでも\n${p(v.price)}なわけないでしょ\nって思ってる頑固な方\n申し訳ございません！`
+      },
+      { title: 'できる理由＋不安払拭', desc: 'キャンペーン理由と勧誘なし保証',
+        fields: [
+          { id:'menu',    label:'施術名',       ph:'脂肪溶解注射' },
+          { id:'no_push', label:'勧誘なし内容', ph:'無理な勧誘・追加料金・顔出し・口コミ' },
+          { id:'price',   label:'特別価格',     ph:'0円〜' },
+          { id:'effect',  label:'効果（文章）', ph:'脂肪を溶かします' },
+        ],
+        build: v => `実はこれ\n${p(v.menu)}の症例データを\n集めるためのキャンペーンだから\nよくある\n${p(v.no_push)}\n一切なし！\n正真正銘${p(v.price)}で${p(v.effect)}！`
+      },
+      { title: '安心感', desc: 'ダウンタイム・痛みなしの具体的安心材料',
+        fields: [{ id:'downtime', label:'痛み・DT', ph:'痛み・ダウンタイムほぼ0' }],
+        build: v => `もちろん\n${p(v.downtime)}だから\n痛いの怖いって方も\n安心してご来院ください！`
+      },
+      { title: '追加施術＋特典', desc: '追加施術と交通費補助など',
+        fields: [
+          { id:'treatments',  label:'追加施術（1行ずつ）', ph:'ボトックス注射\nダイエット内服薬\n美白セット', type:'textarea' },
+          { id:'extra_price', label:'追加施術の価格', ph:'0円〜' },
+          { id:'condition',   label:'対象条件', ph:'近隣にクリニックがない方' },
+          { id:'bonus',       label:'特典',     ph:'交通費最大3万円補助いたします' },
+        ],
+        build: v => {
+          const lines = (v.treatments||'').split('\n').filter(t=>t.trim()).map(t=>`${t.trim()}も`).join('\n');
+          return `${lines||'＿＿＿も'}\n${p(v.extra_price)}でお付けします！\nさらに\n${p(v.condition)}のために\n${p(v.bonus)}`;
+        }
+      },
+      { title: '限定理由', desc: '今月終了の希少性',
+        fields: [
+          { id:'price',    label:'特別価格', ph:'0円〜' },
+          { id:'deadline', label:'期限',     ph:'今月' },
+        ],
+        build: v => `ただ1点だけ落とし穴が\nこの${p(v.price)}のご案内は\n流石に赤字覚悟なので\n${p(v.deadline)}で即終了します`
+      },
+      { title: 'CTA', desc: '最終行動促進',
+        fields: [
+          { id:'appeal', label:'訴求ポイント', ph:'お腹痩せ' },
+          { id:'cta',    label:'CTA文',       ph:'早めに詳細をチェックしてください' },
+        ],
+        build: v => `少しでも${p(v.appeal)}に興味ある方は\n${p(v.cta)}`
+      },
+    ]
+  },
+
+  // ===== 参考④ UGC体験談型 7ブロック =====
+  ref4: {
+    label: '参考④ UGC体験談型',
+    menuOptions: [
+      {value:'fat_dissolve', label:'脂肪溶解注射'},
+      {value:'picolaser',    label:'ピコレーザー'},
+      {value:'double',       label:'二重整形'},
+      {value:'kuma',         label:'クマ取り再生注射'},
+      {value:'acne',         label:'ニキビ治療'},
+      {value:'thread_lift',  label:'糸リフト'},
+    ],
+    templates: {
+      fat_dissolve: { price:'9,800円', menu:'脂肪溶解注射', worry:'ウエストが太すぎて', result:'お腹だし楽しくてたまりません', time:'15分', effect_num:'脂肪の減少', price_casual:'9千円台', reaction:'痩せた？ってめっちゃ聞かれる', safety:'10年間無事故で', downtime:'ダウンタイムほぼ0', cause:'脂肪細胞そのもの', lasting_effect:'太難い体質も目指せる', old_habit:'キツい運動や食事制限が', cta:'試さず夏迎えるとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      picolaser:    { price:'9,800円', menu:'ピコレーザー', worry:'高くてシミ治療を諦めてて', result:'ツルスベ肌が楽しくてたまりません', time:'最短10分', effect_num:'シミの改善', price_casual:'9千円台', reaction:'肌きれいになった？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'シミの原因', lasting_effect:'シミが再発しにくい肌を目指せる', old_habit:'スキンケアへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'イオン導入\nサリチル酸ピーリング\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      double:       { price:'0円〜', menu:'二重整形', worry:'アイプチが面倒で', result:'メイクが楽しくてたまりません', time:'最短10分', effect_num:'自然なぱっちり二重', price_casual:'0円〜', reaction:'目大きくなった？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'毎日のアイプチの手間', lasting_effect:'一度施術したら毎日貼り直し不要を目指せる', old_habit:'テープやアイプチへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', bonus:'交通費も最大3万円負担' },
+      kuma:         { price:'9,800円', menu:'クマ取り再生注射', worry:'目の下のクマが気になって', result:'マスクなしのお出かけが楽しくてたまりません', time:'最短10分', effect_num:'若々しい印象', price_casual:'9千円台', reaction:'若くなった？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'クマの原因', lasting_effect:'クマが目立ちにくい肌を目指せる', old_habit:'コンシーラーへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      acne:         { price:'9,800円', menu:'ニキビ治療', worry:'ニキビが繰り返して', result:'素肌のお出かけが楽しくてたまりません', time:'最短10分', effect_num:'繰り返さない肌', price_casual:'9千円台', reaction:'肌きれいになった？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'ニキビの原因', lasting_effect:'繰り返しにくい肌を目指せる', old_habit:'市販薬やスキンケアへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      thread_lift:  { price:'9,800円', menu:'糸リフト', worry:'顔のたるみが気になって', result:'リフトアップした顔が楽しくてたまりません', time:'最短10分', effect_num:'リフトアップ効果', price_casual:'9千円台', reaction:'若くなった？ってめっちゃ聞かれる', safety:'豊富な症例実績で', downtime:'ダウンタイムほぼ0', cause:'たるみの原因', lasting_effect:'コラーゲン生成を促してリフトアップを目指せる', old_habit:'エステや美容グッズへの出費が', cta:'試さずそのままにするとかマジで後悔するやつ', limit:'リンク消えてたらごめん🙏', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+    },
+    toFieldValues: d => ({
+      0: { price: d.price, menu: d.menu },
+      1: { worry: d.worry, result: d.result },
+      2: { time: d.time, effect_num: d.effect_num, price_casual: d.price_casual },
+      3: { reaction: d.reaction, time: d.time },
+      4: { safety: d.safety, downtime: d.downtime },
+      5: { cause: d.cause, lasting_effect: d.lasting_effect, old_habit: d.old_habit },
+      6: { treatments: d.treatments, extra_price: d.extra_price, bonus: d.bonus },
+      7: { cta: d.cta, limit: d.limit },
+    }),
+    blocks: [
+      { title: '価格フック', desc: '価格×施術名でつかみ',
+        fields: [
+          { id:'price', label:'価格',   ph:'9,800円' },
+          { id:'menu',  label:'施術名', ph:'脂肪溶解注射' },
+        ],
+        build: v => `${p(v.price)}で${p(v.menu)}\n結構やばくないですか？`
+      },
+      { title: '悩み→解決', desc: '悩みへの共感と解決後のビフォーアフター',
+        fields: [
+          { id:'worry',  label:'悩み',     ph:'ウエストが太すぎて' },
+          { id:'result', label:'解決後の感想', ph:'お腹だし楽しくてたまりません' },
+        ],
+        build: v => `${p(v.worry)}\nずっと我慢してたのに\n${p(v.result)}🫶`
+      },
+      { title: '施術説明', desc: '時間・効果・コスパで訴求',
+        fields: [
+          { id:'time',         label:'施術時間',         ph:'15分' },
+          { id:'effect_num',   label:'効果の訴求',       ph:'脂肪の減少' },
+          { id:'price_casual', label:'カジュアル価格表現', ph:'9千円台' },
+        ],
+        build: v => `${p(v.time)}で\n${p(v.effect_num)}を目指せると噂のこれ\n${p(v.price_casual)}で受けられるのに\n試さないのは意味わかんないレベルです🤯`
+      },
+      { title: '体験エピソード', desc: '周りからの反応など体験談',
+        fields: [
+          { id:'reaction', label:'周りからの反応', ph:'痩せた？ってめっちゃ聞かれる' },
+          { id:'time',     label:'施術時間',       ph:'15分' },
+        ],
+        build: v => `${p(v.reaction)}\nいや実は${p(v.time)}受けてただけ笑`
+      },
+      { title: '安全性', desc: '実績・ダウンタイムで安心感',
+        fields: [
+          { id:'safety',   label:'実績・安全性', ph:'10年間無事故で' },
+          { id:'downtime', label:'ダウンタイム', ph:'ダウンタイムほぼ0' },
+        ],
+        build: v => `${p(v.safety)}\n${p(v.downtime)}追及の施術です✌️`
+      },
+      { title: '仕組み＋後悔', desc: '効果の仕組みと今までの努力への後悔',
+        fields: [
+          { id:'cause',          label:'アプローチする原因', ph:'脂肪細胞そのもの' },
+          { id:'lasting_effect', label:'長期効果',           ph:'太難い体質も目指せる' },
+          { id:'old_habit',      label:'以前の習慣',         ph:'キツい運動や食事制限が' },
+        ],
+        build: v => `${p(v.cause)}にアプローチするから\n${p(v.lasting_effect)}🫶\n今まで続けた${p(v.old_habit)}\nまじなんだったん⁉️😰\n私のお金と時間返せ‼️😡ってなりました`
+      },
+      { title: '追加施術', desc: '主施術以外に付けるサービス・特典',
+        fields: [
+          { id:'treatments',  label:'追加施術（1行ずつ）', ph:'ボトックス注射\nダイエット内服薬\n美白セット', type:'textarea' },
+          { id:'extra_price', label:'追加施術の価格', ph:'0円〜' },
+          { id:'bonus',       label:'特別特典', ph:'交通費も最大3万円負担' },
+        ],
+        build: v => {
+          const lines = (v.treatments||'').split('\n').filter(t=>t.trim()).map(t=>`${t.trim()}も`).join('\n');
+          return `${lines||'＿＿＿も'}\n${p(v.extra_price)}でお付けします！\nさらに\n${p(v.bonus)}！`;
+        }
+      },
+      { title: 'CTA＋限定', desc: 'クロージングと希少性',
+        fields: [
+          { id:'cta',   label:'CTA文',   ph:'試さず夏迎えるとかマジで後悔するやつ' },
+          { id:'limit', label:'限定理由', ph:'リンク消えてたらごめん🙏' },
+        ],
+        build: v => `あれこれやるよりもこれ試す方が話早いです\n${p(v.cta)}💥\n(予約埋まって${p(v.limit)})`
+      },
+    ]
+  },
+
+  // ===== 参考⑤ 通常価格比較型 8ブロック =====
+  ref5: {
+    label: '参考⑤ 通常価格比較型',
+    menuOptions: [
+      {value:'fat_dissolve', label:'脂肪溶解注射'},
+      {value:'picolaser',    label:'ピコレーザー'},
+      {value:'double',       label:'二重整形'},
+      {value:'kuma',         label:'クマ取り再生注射'},
+      {value:'acne',         label:'ニキビ治療'},
+      {value:'thread_lift',  label:'糸リフト'},
+    ],
+    templates: {
+      fat_dissolve: { price:'0円〜', menu:'脂肪溶解注射', normal_price:'通常59,400円', price_per:'0円〜', bonus1:'無料カウンセリング・施術後ケア', seats:'30', bonus2:'約3万円相当の施術オプション', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      picolaser:    { price:'0円〜', menu:'ピコレーザー', normal_price:'通常29,400円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', seats:'30', bonus2:'約3万円相当の美容施術', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'イオン導入\nサリチル酸ピーリング\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      double:       { price:'0円〜', menu:'二重整形', normal_price:'通常29,800円', price_per:'0円〜', bonus1:'麻酔代・お薬代・ドクター指名料無料', seats:'5', bonus2:'交通費最大3万円サポート', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', bonus:'交通費も最大3万円負担' },
+      kuma:         { price:'0円〜', menu:'クマ取り再生注射', normal_price:'通常29,400円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', seats:'30', bonus2:'約3万円相当の美容施術', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      acne:         { price:'0円〜', menu:'ニキビ治療', normal_price:'通常相場数万円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', seats:'30', bonus2:'約3万円相当の美容施術', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+      thread_lift:  { price:'0円〜', menu:'糸リフト', normal_price:'通常相場数万円', price_per:'0円〜', bonus1:'無料カウンセリング・アフターケア', seats:'30', bonus2:'約3万円相当の美容施術', worry:'都合のいいキャンペーン', no_push:'無理な勧誘・追加料金', cta:'今すぐ予約枠を確保してください', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費も最大3万円負担' },
+    },
+    toFieldValues: d => ({
+      0: { price: d.price, menu: d.menu },
+      1: { price: d.price, menu: d.menu },
+      2: { normal_price: d.normal_price, menu: d.menu, price: d.price },
+      3: { bonus1: d.bonus1, seats: d.seats, bonus2: d.bonus2 },
+      4: { treatments: d.treatments, extra_price: d.extra_price, bonus: d.bonus },
+      5: { worry: d.worry },
+      6: { price_per: d.price_per, no_push: d.no_push },
+      7: {},
+      8: { menu: d.menu, cta: d.cta },
+    }),
+    blocks: [
+      { title: '価格フック', desc: '金額で驚かせる冒頭',
+        fields: [
+          { id:'price', label:'特別価格', ph:'0円〜' },
+          { id:'menu',  label:'施術名',   ph:'脂肪溶解注射' },
+        ],
+        build: v => `${p(v.price)}で\n${p(v.menu)}を受けられるってマジ？`
+      },
+      { title: 'オファー詳細', desc: '追加料金なし・価格を明示',
+        fields: [
+          { id:'price', label:'特別価格', ph:'0円〜' },
+          { id:'menu',  label:'施術名',   ph:'脂肪溶解注射' },
+        ],
+        build: v => `ただいまTCBでは\n追加料金なしの\n${p(v.price)}で\n${p(v.menu)}を受けられる\nキャンペーンを実施中`
+      },
+      { title: '通常価格比較', desc: '通常価格との差を見せる',
+        fields: [
+          { id:'normal_price', label:'通常価格', ph:'通常59,400円' },
+          { id:'menu',         label:'施術名',   ph:'脂肪溶解注射' },
+          { id:'price',        label:'特別価格', ph:'0円〜' },
+        ],
+        build: v => `通常${p(v.normal_price)}はする\n${p(v.menu)}の料金が\n${p(v.price)}で受けられて`
+      },
+      { title: '追加特典', desc: '先着特典でさらに価値を積み上げる',
+        fields: [
+          { id:'bonus1', label:'特典内容',   ph:'無料カウンセリング・施術後ケア' },
+          { id:'seats',  label:'先着人数',   ph:'30' },
+          { id:'bonus2', label:'先着限定特典', ph:'約3万円相当の施術オプション' },
+        ],
+        build: v => `今この動画からご予約いただくとさらに\n${p(v.bonus1)}に加えて\n各店舗先着${p(v.seats)}名様限定\n${p(v.bonus2)}もついてくる`
+      },
+      { title: '追加施術', desc: '主施術以外に付けるサービス・特典',
+        fields: [
+          { id:'treatments',  label:'追加施術（1行ずつ）', ph:'ボトックス注射\nダイエット内服薬\n美白セット', type:'textarea' },
+          { id:'extra_price', label:'追加施術の価格', ph:'0円〜' },
+          { id:'bonus',       label:'特別特典', ph:'交通費も最大3万円負担' },
+        ],
+        build: v => {
+          const lines = (v.treatments||'').split('\n').filter(t=>t.trim()).map(t=>`${t.trim()}も`).join('\n');
+          return `${lines||'＿＿＿も'}\n${p(v.extra_price)}でお付けします！\nさらに\n${p(v.bonus)}！`;
+        }
+      },
+      { title: '懸念代弁', desc: '怪しいと思う人の疑念を先に言う',
+        fields: [
+          { id:'worry', label:'懸念の内容', ph:'都合のいいキャンペーン' },
+        ],
+        build: v => `それにしても\nこんなに${p(v.worry)}って\n怪しくない？\nって思ったそこのあなた\n安心してください`
+      },
+      { title: '安心材料', desc: '勧誘なしで信頼構築',
+        fields: [
+          { id:'price_per', label:'価格補足', ph:'0円〜' },
+          { id:'no_push',   label:'勧誘なし内容',  ph:'無理な勧誘・追加料金' },
+        ],
+        build: v => `${p(v.price_per)}で\n${p(v.no_push)}は一切なし`
+      },
+      { title: '限定感', desc: '赤字覚悟・即終了で緊急性を演出',
+        fields: [],
+        build: v => `ただ\nさすがに赤字覚悟の\n豪華特典付きキャンペーンなので\n予約枠がなくなり次第即終了`
+      },
+      { title: 'CTA', desc: '最終行動促進',
+        fields: [
+          { id:'menu', label:'施術名', ph:'脂肪溶解注射' },
+          { id:'cta',  label:'CTA文', ph:'今すぐ予約枠を確保してください' },
+        ],
+        build: v => `豪華特典付きで\n${p(v.menu)}を\nお得に受けたい方は\n${p(v.cta)}`
+      },
+    ]
+  },
+
+  // ===== 参考⑥ TCB技術説明型 6ブロック =====
+  ref6: {
+    label: '参考⑥ TCB技術説明型',
+    menuOptions: [
+      {value:'picolaser',    label:'ピコレーザー'},
+      {value:'double',       label:'二重整形'},
+      {value:'thread_lift',  label:'糸リフト'},
+      {value:'kuma',         label:'クマ取り再生注射'},
+      {value:'fat_dissolve', label:'脂肪溶解注射'},
+      {value:'acne',         label:'ニキビ治療'},
+      {value:'hyaluronic',   label:'ヒアルロン酸注射'},
+      {value:'nose',         label:'鼻整形'},
+    ],
+    templates: {
+      picolaser:    { target:'金欠でシミ治療諦めてた女性に', targetVariants:['金欠でシミ治療諦めてた女性に','金欠でピコレーザー諦めてた女性に','0円〜ならピコレーザー受けたい女性に','シミ・そばかす全滅させたい女性に','高くてシミ治療を諦めていた女性に','高くてピコレーザー諦めていた女性に'], audience:'方', desc:'ここまでツルスベ肌を目指せるピコレーザー', price:'0円〜', c1:'どうせ追加料金とられる', c2:'営業しつこそう', specialty:'一般的なスキンケアと違って\nシミの原因にレーザーで直接アプローチ', effect_desc:'シミの改善を目指せます', benefit:'シミが目立ちにくい肌を', goal:'ツルスベ肌', treatments:'イオン導入\nサリチル酸ピーリング\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担', seats:'この動画から予約した先着5名限定', cta:'お近くのTCBの予約枠が空いているか確認してみてください' },
+      double:       { target:'二重整形したいけど金欠で諦めている方へ', targetVariants:['4,800円なら二重整形したい女性を探しています','4,800円なら二重整形試したい女性へ','アイプチめんどくさいから二重整形したい方へ','4,800円なら二重整形したい方へ','金欠だから4,800円なら二重整形したい方へ','二重整形したいけど金欠で諦めている方へ'], audience:'方', desc:'腫れが少なく自然な仕上がりの二重整形', price:'0円〜', c1:'どうせ高額プランを勧められる', c2:'術後が不自然になりそう', specialty:'一般的なアイプチと違って\n医師が施術する埋没法で自然な二重を形成', effect_desc:'自然なぱっちり二重を目指せます', benefit:'毎日のアイプチ不要の生活を', goal:'自然なぱっちり二重', treatments:'麻酔代\nお薬代\nドクター指名料', extra_price:'無料', bonus:'交通費も最大3万円負担', seats:'この動画から予約した先着5名限定', cta:'お近くのTCBの予約枠が空いているか確認してみてください' },
+      thread_lift:  { target:'たるみが気になってきた方へ', targetVariants:['金欠で糸リフト諦めてた方に','高くて糸リフト諦めていた方に','0円〜なら糸リフト受けてみたい方に','顔のたるみが最近気になってきた方に','糸リフトしたいけど金欠で諦めている方へ','たるみをどうにかしたいって方を探しています！'], audience:'方', desc:'メスを使わずリフトアップを目指せる糸リフト', price:'0円〜', c1:'どうせ本数を増やして高くなる', c2:'効果がすぐ落ちそう', specialty:'一般的なエステと違って\n医師が糸でコラーゲン生成を促す施術', effect_desc:'リフトアップ効果を目指せます', benefit:'たるみが目立ちにくい肌を', goal:'リフトアップした若々しい顔', treatments:'コラーゲン点滴\n保湿マスクパック', extra_price:'0円〜', bonus:'交通費も最大3万円負担', seats:'この動画から予約した先着5名限定', cta:'お近くのTCBの予約枠が空いているか確認してみてください' },
+      kuma:         { target:'目の下のクマに悩んでいる方に', targetVariants:['金欠でクマ取り諦めてた方に','高くてクマ取り諦めていた方に','0円〜ならクマ取り受けてみたい方に','クマで老けて見られるのが嫌な方に','クマ取りしたいけど金欠で諦めている方へ','目の下のクマをどうにかしたいって方を探しています！'], audience:'方', desc:'切らずにクマの改善を目指せるクマ取り再生注射', price:'0円〜', c1:'どうせ追加で何本も打たれる', c2:'内出血が長引きそう', specialty:'一般的なコンシーラーと違って\n注射でクマの原因から改善を目指す', effect_desc:'クマが目立ちにくい肌を目指せます', benefit:'クマのないすっきりした目元を', goal:'若々しい印象', treatments:'ボトックス注射\nヒアルロン酸注射\n白玉点滴', extra_price:'0円〜', bonus:'交通費も最大3万円負担', seats:'この動画から予約した先着5名限定', cta:'お近くのTCBの予約枠が空いているか確認してみてください' },
+      fat_dissolve: { target:'食事制限しても部分痩せできない方に', targetVariants:['金欠で脂肪溶解諦めてた方に','高くて脂肪溶解諦めていた方に','0円〜なら脂肪溶解やってみたい方に','食事制限しても痩せられなくて悩んでいる方に','脂肪溶解したいけど金欠で諦めている方へ','部分痩せしたいけどお金がないって方を探しています！'], audience:'方', desc:'気になる部位の脂肪にアプローチする脂肪溶解注射', price:'0円〜', c1:'どうせ何本も打たされて高くなる', c2:'効果が出るか不安', specialty:'一般的なダイエットと違って\n脂肪細胞そのものにピンポイントでアプローチ', effect_desc:'気になる部位の変化を目指せます', benefit:'食事制限や運動なしで部分的な変化を', goal:'スッキリした体型', treatments:'ボトックス注射\nダイエット内服薬\n美白セット', extra_price:'0円〜', bonus:'交通費も最大3万円負担', seats:'この動画から予約した先着5名限定', cta:'お近くのTCBの予約枠が空いているか確認してみてください' },
+      acne:         { target:'ちょっとチクっとしてもいいから顔のニキビを改善したい方を探しています！', targetVariants:['ちょっとチクっとしてもいいから顔のニキビ全滅させたい方を探しています！','ちょっと痛くてもいいから顔のニキビ消したい方を探しています！','金欠だからニキビ治療諦めてますって方を探しています！','0円〜ならニキビ治療やってみたいって方を探しています！','ニキビ跡の治療したいけどお金がないって方を探しています！','高くてニキビ治療諦めていた方を探しています！'], audience:'方', desc:'根本から原因の改善を目指すニキビ治療', price:'0円〜', c1:'どうせ高い薬を処方される', c2:'すぐ再発しそう', specialty:'一般的な市販薬と違って\n医師がニキビの根本原因にアプローチ', effect_desc:'繰り返しにくい肌を目指せます', benefit:'肌荒れのループから抜け出した生活を', goal:'ニキビに悩まない肌', treatments:'ボトックス注射\n美白セット\n保湿用SRSマスク', extra_price:'0円〜', bonus:'交通費も最大3万円負担', seats:'この動画から予約した先着5名限定', cta:'お近くのTCBの予約枠が空いているか確認してみてください' },
+      hyaluronic:   { target:'法令線や唇の薄さが気になってきた方に', targetVariants:['金欠でヒアルロン酸諦めてた方に','高くてヒアルロン酸諦めていた方に','0円〜ならヒアルロン酸試してみたい方に','法令線・ほうれい線が気になってきた方に','ヒアルロン酸やってみたいけど金欠で諦めている方へ','老けて見られるのが嫌だって方を探しています！'], audience:'方', desc:'自然なボリュームを目指せるヒアルロン酸注射', price:'0円〜', c1:'どうせ不自然にパンパンになる', c2:'追加本数でどんどん高くなりそう', specialty:'一般的なスキンケアと違って\n注射でヒアルロン酸を内側から補充', effect_desc:'自然なふっくら感を目指せます', benefit:'自然な若々しさを', goal:'ふっくら美肌', treatments:'クマ取り再生注射\n脂肪溶解注射\nボトックス注射', extra_price:'0円〜', bonus:'交通費も最大3万円負担', seats:'この動画から予約した先着5名限定', cta:'お近くのTCBの予約枠が空いているか確認してみてください' },
+      nose:         { target:'鼻のコンプレックスを長年抱えてきた方に', targetVariants:['金欠で鼻整形諦めてた方に','高くて鼻整形諦めていた方に','0円〜なら鼻整形試してみたい方に','ずっと鼻にコンプレックスがあった方に','鼻整形したいけど金欠で諦めている方へ','鼻が気になって自信が持てないって方を探しています！'], audience:'方', desc:'顔のバランスを整える鼻整形', price:'0円〜', c1:'どうせ術後に不自然になる', c2:'後遺症が残りそうで怖い', specialty:'一般的な整形イメージと違って\n豊富な症例実績のある専門ドクターが担当', effect_desc:'自然な仕上がりを目指せます', benefit:'コンプレックスのない自分を', goal:'顔のバランスが整った垢抜け顔', treatments:'', extra_price:'0円〜', bonus:'交通費も最大3万円負担', seats:'この動画から予約した先着5名限定', cta:'お近くのTCBの予約枠が空いているか確認してみてください' },
+    },
+    toFieldValues: d => ({
+      0: { target: d.target, desc: d.desc, price: d.price, audience: d.audience },
+      1: { price: d.price },
+      2: { c1: d.c1, c2: d.c2 },
+      3: { specialty: d.specialty, price: d.price, effect_desc: d.effect_desc },
+      4: { benefit: d.benefit, goal: d.goal },
+      5: { treatments: d.treatments, extra_price: d.extra_price, bonus: d.bonus },
+      6: { seats: d.seats, cta: d.cta },
+    }),
+    blocks: [
+      { title: 'ターゲット悩み＋オファー', desc: '誰に訴え、何をいくらで提供するか',
+        fields: [
+          { id:'target',   label:'ターゲット呼びかけ', ph:'金欠でシミ治療諦めてた女性に' },
+          { id:'desc',     label:'施術の説明文',       ph:'ここまでツルスベ肌を目指せるピコレーザー' },
+          { id:'price',    label:'価格',               ph:'0円〜' },
+          { id:'audience', label:'対象',               ph:'方' },
+        ],
+        build: v => `${p(v.target)}\n朗報です！\nただいまTCBでは\n${p(v.desc)}を\n${p(v.price)}で受けてくださる\n${p(v.audience)}を募集しています！`
+      },
+      { title: '不安払拭', desc: '勧誘・追加料金への疑念を先に否定する',
+        fields: [{ id:'price', label:'価格', ph:'0円〜' }],
+        build: v => `もちろん\n無理な勧誘・追加料金はありません\n支払いは本当に${p(v.price)}！\nなのですが`
+      },
+      { title: '懸念代弁', desc: 'ユーザーの疑念・反論を先に言い切る',
+        fields: [
+          { id:'c1', label:'懸念①', ph:'どうせ追加料金とられる' },
+          { id:'c2', label:'懸念②', ph:'営業しつこそう' },
+        ],
+        build: v => `${p(v.c1)}\n${p(v.c2)}\nとか言って\n怪しんでるお客さんが多いんですけど〜！`
+      },
+      { title: 'できる理由＋技術説明', desc: 'TCBの特長・技術で差別化する',
+        fields: [
+          { id:'specialty',   label:'TCBの特長・技術', ph:'一般的なスキンケアと違って\nシミの原因にレーザーで直接アプローチ', type:'textarea' },
+          { id:'price',       label:'価格',             ph:'0円〜' },
+          { id:'effect_desc', label:'効果の説明',       ph:'シミの改善を目指せます' },
+        ],
+        build: v => `TCBは${p(v.specialty)}！\nなので\n${p(v.price)}の体験でも\n${p(v.effect_desc)}`
+      },
+      { title: '効果＋メリット', desc: '具体的な変化と目標を提示する',
+        fields: [
+          { id:'benefit', label:'期待できる変化', ph:'シミが目立ちにくい肌を' },
+          { id:'goal',    label:'目標・ゴール',   ph:'ツルスベ肌' },
+        ],
+        build: v => `だから${p(v.benefit)}\nずーっと${p(v.goal)}目指せます！`
+      },
+      { title: '追加施術', desc: '主施術以外に付けるサービス・特典',
+        fields: [
+          { id:'treatments',  label:'追加施術（1行ずつ）', ph:'ボトックス注射\nダイエット内服薬\n美白セット', type:'textarea' },
+          { id:'extra_price', label:'追加施術の価格', ph:'0円〜' },
+          { id:'bonus',       label:'特別特典', ph:'交通費も最大3万円負担' },
+        ],
+        build: v => {
+          const lines = (v.treatments||'').split('\n').filter(t=>t.trim()).map(t=>`${t.trim()}も`).join('\n');
+          return `${lines||'＿＿＿も'}\n${p(v.extra_price)}でお付けします！\nさらに\n${p(v.bonus)}！`;
+        }
+      },
+      { title: '限定CTA', desc: '先着・緊急性でクロージング',
+        fields: [
+          { id:'seats', label:'先着条件', ph:'この動画から予約した先着5名限定' },
+          { id:'cta',   label:'CTA文',   ph:'お近くのTCBの予約枠が空いているか確認してみてください' },
+        ],
+        build: v => `ただ1点だけ注意！\n${p(v.seats)}\n予約枠には限りがあるので\n今すぐ下のリンクから\n${p(v.cta)}`
+      },
+    ]
+  },
+
+}; // REF_CONFIGS end
+
+const CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩'.split('');
+let refs = [
+  { title: '参考①', configKey: 'ref1', fieldValues: {}, templateKey: '', targetVariants: [], videoUrl: '', metrics: [] },
+  { title: '参考②', configKey: 'ref2', fieldValues: {}, templateKey: '', targetVariants: [], videoUrl: '', metrics: [] },
+  { title: '参考③', configKey: 'ref3', fieldValues: {}, templateKey: '', targetVariants: [], videoUrl: '', metrics: [] },
+  { title: '参考④', configKey: 'ref4', fieldValues: {}, templateKey: '', targetVariants: [], videoUrl: '', metrics: [] },
+  { title: '参考⑤', configKey: 'ref5', fieldValues: {}, templateKey: '', targetVariants: [], videoUrl: '', metrics: [] },
+  { title: '参考⑥', configKey: 'ref6', fieldValues: {}, templateKey: '', targetVariants: [], videoUrl: '', metrics: [] },
+];
+let activeRefIdx = 0;
+
+function renderRefPills() {
+  document.getElementById('refPills').innerHTML = refs.map((r, i) => `
+    <button class="ref-pill ${i === activeRefIdx ? 'active' : ''}" onclick="switchRef(${i})">
+      ${escHtml(r.title)}
+      ${refs.length > 1 ? `<span class="ref-pill-del" onclick="deleteRef(event,${i})">×</span>` : ''}
+    </button>
+  `).join('');
+}
+
+function renderForm() {
+  const ref = refs[activeRefIdx];
+  const config = REF_CONFIGS[ref.configKey];
+
+  const tCard = document.getElementById('templateCard');
+  const tSelect = document.getElementById('templateSelect');
+  if (config.menuOptions && config.menuOptions.length > 0) {
+    tCard.style.display = 'block';
+    tSelect.innerHTML = '<option value="">― 選択してください ―</option>' +
+      config.menuOptions.map(o => `<option value="${o.value}">${escHtml(o.label)}</option>`).join('');
+    tSelect.value = ref.templateKey || '';
+  } else {
+    tCard.style.display = 'none';
+  }
+
+  const metricsCrs = Array.isArray(ref.metrics) ? ref.metrics : [];
+  const crCount = metricsCrs.length;
+  const totalRows = metricsCrs.reduce((s, cr) => s + (cr.rows||[]).length, 0);
+  const metricsLabel = crCount > 0 ? `${crCount}件のCR・${totalRows}行` : 'データなし';
+  const metaCard = `
+    <div class="block-card">
+      <div class="card-title">動画情報 &amp; 数値結果</div>
+      <div class="card-desc" style="margin-bottom:14px;">動画URLと運用後の実績数値を記録します</div>
+      <div class="field-row">
+        <label>動画URL</label>
+        <input type="text" placeholder="https://..." value="${escHtml(ref.videoUrl||'')}" oninput="onUrlInput(this.value)">
+      </div>
+      <button class="btn-metrics" onclick="openMetricsPage(${activeRefIdx})">
+        <span>数値結果を確認 / 入力 ›</span>
+        <span class="metrics-badge">${escHtml(metricsLabel)}</span>
+      </button>
+    </div>`;
+
+  document.getElementById('blockForm').innerHTML = metaCard + config.blocks.map((b, bi) => {
+    const vals = ref.fieldValues[bi] || {};
+    const fieldsHtml = b.fields.map(f => {
+      const val = escHtml(vals[f.id] || '');
+      const ph  = escHtml(f.ph || '');
+      const tag = f.type === 'textarea'
+        ? `<textarea placeholder="${ph}" oninput="onFieldInput(${bi},'${f.id}',this.value)">${val}</textarea>`
+        : `<input type="text" placeholder="${ph}" value="${val}" oninput="onFieldInput(${bi},'${f.id}',this.value)">`;
+      let chips = '';
+      if (bi === 0 && f.id === 'target' && ref.targetVariants && ref.targetVariants.length > 0) {
+        const cur = vals[f.id] || '';
+        chips = `<div class="variant-chips">` +
+          ref.targetVariants.map((v, vi) =>
+            `<button class="variant-chip${ v === cur ? ' vc-active' : ''}" onclick="setTargetVariant(${vi})"><span class="vc-label">${'abcdef'[vi]||vi+1}</span>${escHtml(v)}</button>`
+          ).join('') +
+          `</div>`;
+      }
+      return `<div class="field-row"><label>${escHtml(f.label)}</label>${tag}${chips}</div>`;
+    }).join('');
+    return `
+      <div class="block-card">
+        <div class="block-header">
+          <div class="block-num">${bi + 1}</div>
+          <div>
+            <div class="card-title">${escHtml(b.title)}</div>
+            <div class="card-desc">${escHtml(b.desc)}</div>
+          </div>
+        </div>
+        ${fieldsHtml}
+      </div>`;
+  }).join('');
+}
+
+function setTargetVariant(variantIdx) {
+  const variant = refs[activeRefIdx].targetVariants[variantIdx];
+  if (variant === undefined) return;
+  if (!refs[activeRefIdx].fieldValues[0]) refs[activeRefIdx].fieldValues[0] = {};
+  refs[activeRefIdx].fieldValues[0].target = variant;
+  renderForm();
+  render();
+}
+
+function onFieldInput(bi, fid, val) {
+  if (!refs[activeRefIdx].fieldValues[bi]) refs[activeRefIdx].fieldValues[bi] = {};
+  refs[activeRefIdx].fieldValues[bi][fid] = val;
+  render();
+}
+
+function render() {
+  const ref = refs[activeRefIdx];
+  const config = REF_CONFIGS[ref.configKey];
+  const text = config.blocks.map((b, bi) => b.build(ref.fieldValues[bi] || {})).join('\n');
+  const html = escHtml(text).replace(/＿＿＿/g, '<span style="color:#c7c7cc;">＿＿＿</span>');
+  document.getElementById('preview').innerHTML = html;
+}
+
+function switchRef(i) {
+  activeRefIdx = i;
+  renderRefPills();
+  renderForm();
+  render();
+}
+
+function onUrlInput(val) {
+  refs[activeRefIdx].videoUrl = val;
+}
+
+function addRef() {
+  refs.push({ title: `参考${CIRCLED[refs.length] || refs.length + 1}`, configKey: 'tcb7', fieldValues: {}, templateKey: '', targetVariants: [], videoUrl: '', metrics: [] });
+  activeRefIdx = refs.length - 1;
+  renderRefPills();
+  renderForm();
+  render();
+}
+
+function deleteRef(e, i) {
+  e.stopPropagation();
+  if (refs.length === 1) return;
+  refs.splice(i, 1);
+  activeRefIdx = Math.min(activeRefIdx, refs.length - 1);
+  renderRefPills();
+  renderForm();
+  render();
+}
+
+function loadTemplate(key) {
+  if (!key) return;
+  const ref = refs[activeRefIdx];
+  const config = REF_CONFIGS[ref.configKey];
+  const d = config.templates && config.templates[key];
+  if (!d) return;
+  refs[activeRefIdx].templateKey = key;
+  refs[activeRefIdx].fieldValues = config.toFieldValues(d);
+  refs[activeRefIdx].targetVariants = d.targetVariants || [];
+  renderForm();
+  render();
+}
+
+function clearAll() {
+  refs[activeRefIdx].fieldValues = {};
+  refs[activeRefIdx].templateKey = '';
+  refs[activeRefIdx].targetVariants = [];
+  renderForm();
+  render();
+}
+
+function copyText() {
+  const ref = refs[activeRefIdx];
+  const config = REF_CONFIGS[ref.configKey];
+  const text = config.blocks.map((b, bi) => {
+    const v = ref.fieldValues[bi] || {};
+    return b.build(v).replace(/＿＿＿/g, '');
+  }).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> コピー済み`;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> コピー`;
+    }, 2000);
+  });
+}
+
+// ===== 数値結果ページ =====
+let mPage = { refIdx: -1, crIdx: 0, metric: 'ctr' };
+
+const CHART_METRICS = [
+  { id:'ctr',label:'CTR(%)' },{ id:'cvr',label:'CVR(%)' },{ id:'cv',label:'CV数' },
+  { id:'cpa',label:'CPA' },{ id:'spend',label:'消化金額' },
+  { id:'impressions',label:'IMP' },{ id:'views',label:'再生数' },{ id:'clicks',label:'クリック' },
+];
+const TBL_COLS = [
+  { id:'date',        label:'日付',         w:'108px' },
+  { id:'impressions', label:'IMP',          w:'75px' },
+  { id:'views',       label:'再生数',       w:'70px' },
+  { id:'clicks',      label:'クリック',     w:'70px' },
+  { id:'ctr',         label:'CTR(%)',       w:'65px' },
+  { id:'cvr',         label:'CVR(%)',       w:'65px' },
+  { id:'cv',          label:'CV数',         w:'58px' },
+  { id:'cpa',         label:'CPA(円)',      w:'75px' },
+  { id:'spend',       label:'消化金額(円)', w:'92px' },
+];
+
+function openMetricsPage(refIdx) {
+  mPage.refIdx = refIdx;
+  mPage.crIdx = 0;
+  const ref = refs[refIdx];
+  if (!Array.isArray(ref.metrics)) ref.metrics = [];
+  if (!ref.metrics.length) ref.metrics.push({ name:'CR-A', rows:[] });
+  document.getElementById('metricsPage').style.display = 'flex';
+  renderMetricsPage();
+}
+
+function closeMetricsPage() {
+  document.getElementById('metricsPage').style.display = 'none';
+  mPage.refIdx = -1;
+  renderForm(); render();
+}
+
+function renderMetricsPage() {
+  if (mPage.refIdx < 0) return;
+  const ref = refs[mPage.refIdx];
+  const crs = ref.metrics || [];
+  mPage.crIdx = Math.min(mPage.crIdx, Math.max(0, crs.length - 1));
+  const ci = mPage.crIdx;
+
+  document.getElementById('mPageTitle').textContent = `数値結果 — ${ref.title}`;
+
+  // CR タブ
+  document.getElementById('crTabs').innerHTML =
+    crs.map((cr, i) => `
+      <button class="cr-tab${i===ci?' active':''}" onclick="switchMCr(${i})">
+        ${escHtml(cr.name||`CR-${i+1}`)}
+        ${crs.length>1?`<span class="cr-tab-del" onclick="deleteMCr(event,${i})">×</span>`:''}
+      </button>`).join('') +
+    `<button class="btn-add-cr" onclick="addMCr()">＋ CRを追加</button>`;
+
+  const cr = crs[ci];
+  // ツールバー
+  document.getElementById('crToolbar').innerHTML = cr ? `
+    <div class="field-row" style="flex:1;min-width:150px;margin-bottom:0;">
+      <label>CR名</label>
+      <input type="text" value="${escHtml(cr.name||'')}" placeholder="CR-A" oninput="onMCrName(this.value)">
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-shrink:0;">
+      <button class="btn-csv" onclick="document.getElementById('mCsvInput').click()">CSVから読み込む</button>
+      <input type="file" id="mCsvInput" accept=".csv" style="display:none;" onchange="importMCSV(this)">
+      <span class="csv-tip" onclick="downloadMCSVTemplate()">テンプレDL</span>
+    </div>` : '';
+
+  // グラフ切り替えボタン
+  document.getElementById('metricToggles').innerHTML =
+    `<span style="font-size:11px;font-weight:700;color:#8e8e93;align-self:center;margin-right:2px;">グラフ：</span>` +
+    CHART_METRICS.map(m =>
+      `<button class="metric-toggle${mPage.metric===m.id?' active':''}" onclick="setMMetric('${m.id}')">${escHtml(m.label)}</button>`
+    ).join('');
+
+  // テーブル
+  if (cr) {
+    const rows = cr.rows || [];
+    document.getElementById('metricsTableWrap').innerHTML = `
+      <table class="metrics-tbl">
+        <thead><tr>
+          ${TBL_COLS.map(c=>`<th style="min-width:${c.w}">${escHtml(c.label)}</th>`).join('')}
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${rows.map((row,ri)=>`
+            <tr>
+              ${TBL_COLS.map(c=>`<td><input type="text" value="${escHtml(row[c.id]||'')}" placeholder="${c.id==='date'?'yyyy-mm-dd':''}" oninput="onMCell(${ri},'${c.id}',this.value)"></td>`).join('')}
+              <td><button class="tbl-del-btn" onclick="deleteMRow(${ri})" title="削除">✕</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      <button class="btn-add-row" onclick="addMRow()">＋ 行を追加</button>`;
+  } else {
+    document.getElementById('metricsTableWrap').innerHTML =
+      `<p style="color:#8e8e93;font-size:13px;text-align:center;padding:24px;">CRを追加してください</p>`;
+  }
+
+  setTimeout(drawMChart, 40);
+}
+
+function switchMCr(i) { mPage.crIdx = i; renderMetricsPage(); }
+
+function addMCr() {
+  const crs = refs[mPage.refIdx].metrics;
+  const n = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  crs.push({ name:`CR-${n[crs.length]||crs.length+1}`, rows:[] });
+  mPage.crIdx = crs.length - 1;
+  renderMetricsPage();
+}
+
+function deleteMCr(e, i) {
+  e.stopPropagation();
+  const crs = refs[mPage.refIdx].metrics;
+  if (crs.length <= 1) return;
+  crs.splice(i, 1);
+  mPage.crIdx = Math.min(mPage.crIdx, crs.length-1);
+  renderMetricsPage();
+}
+
+function onMCrName(val) {
+  const cr = refs[mPage.refIdx].metrics[mPage.crIdx];
+  if (cr) cr.name = val;
+  const tabs = document.querySelectorAll('.cr-tab');
+  const tab = tabs[mPage.crIdx];
+  if (tab) tab.childNodes[0].textContent = val || `CR-${mPage.crIdx+1}`;
+}
+
+function addMRow() {
+  const cr = refs[mPage.refIdx].metrics[mPage.crIdx];
+  if (!cr) return;
+  if (!cr.rows) cr.rows = [];
+  let nextDate = '';
+  if (cr.rows.length > 0) {
+    const last = cr.rows[cr.rows.length-1].date;
+    if (last) { const d = new Date(last); d.setDate(d.getDate()+1); nextDate = d.toISOString().slice(0,10); }
+  }
+  cr.rows.push({ date:nextDate, impressions:'', views:'', clicks:'', ctr:'', cvr:'', cv:'', cpa:'', spend:'' });
+  renderMetricsPage();
+}
+
+function deleteMRow(ri) {
+  const cr = refs[mPage.refIdx].metrics[mPage.crIdx];
+  if (!cr) return;
+  cr.rows.splice(ri, 1);
+  renderMetricsPage();
+}
+
+function onMCell(ri, fid, val) {
+  const cr = refs[mPage.refIdx].metrics[mPage.crIdx];
+  if (!cr || !cr.rows[ri]) return;
+  cr.rows[ri][fid] = val;
+  drawMChart();
+}
+
+function setMMetric(metric) {
+  mPage.metric = metric;
+  document.getElementById('metricToggles').innerHTML =
+    `<span style="font-size:11px;font-weight:700;color:#8e8e93;align-self:center;margin-right:2px;">グラフ：</span>` +
+    CHART_METRICS.map(m =>
+      `<button class="metric-toggle${mPage.metric===m.id?' active':''}" onclick="setMMetric('${m.id}')">${escHtml(m.label)}</button>`
+    ).join('');
+  drawMChart();
+}
+
+function drawMChart() {
+  const canvas = document.getElementById('metricsChart');
+  if (!canvas || mPage.refIdx < 0) return;
+  const crs = refs[mPage.refIdx].metrics || [];
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  const ML=56, MR=16, MT=22, MB=38;
+  const cW=W-ML-MR, cH=H-MT-MB;
+
+  const allDates = [...new Set(crs.flatMap(cr=>(cr.rows||[]).map(r=>r.date).filter(Boolean)))].sort();
+  const pv = v => { if(v===null||v===''||v===undefined) return null; const n=parseFloat(String(v).replace(/[,円%\s]/g,'')); return isNaN(n)?null:n; };
+  const COLORS = ['#6366f1','#34c759','#ff9500','#ff3b30','#5856d6','#00c7be'];
+  const series = crs.map((cr,ci) => ({
+    name: cr.name||`CR-${ci+1}`,
+    data: allDates.map(d => { const r=(cr.rows||[]).find(r=>r.date===d); return r?pv(r[mPage.metric]):null; }),
+    color: COLORS[ci%COLORS.length]
+  })).filter(s=>s.data.some(v=>v!==null));
+
+  if (!allDates.length || !series.length) {
+    ctx.fillStyle='#c7c7cc'; ctx.font='14px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('日付と数値を入力するとグラフが表示されます', W/2, H/2);
+    return;
+  }
+
+  const allVals = series.flatMap(s=>s.data).filter(v=>v!==null);
+  const yMax = Math.max(...allVals) * 1.18 || 10;
+
+  // グリッド + Y軸ラベル
+  const yT=4;
+  ctx.strokeStyle='#e5e5ea'; ctx.lineWidth=1;
+  for(let i=0;i<=yT;i++) {
+    const y=MT+cH-(i/yT)*cH;
+    ctx.beginPath(); ctx.moveTo(ML,y); ctx.lineTo(ML+cW,y); ctx.stroke();
+    const v=yMax*i/yT;
+    ctx.fillStyle='#8e8e93'; ctx.font='10px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(v>=10000?(v/10000).toFixed(1)+'万':v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(v<10?1:0), ML-5, y);
+  }
+
+  // X軸ラベル
+  const xOf = di => allDates.length>1 ? ML+(di/(allDates.length-1))*cW : ML+cW/2;
+  const xs=Math.ceil(allDates.length/10);
+  ctx.fillStyle='#8e8e93'; ctx.font='9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
+  allDates.forEach((d,di) => { if(di%xs!==0&&di!==allDates.length-1)return; ctx.fillText(d.slice(5),xOf(di),MT+cH+6); });
+
+  // 軸線
+  ctx.strokeStyle='#c7c7cc'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(ML,MT); ctx.lineTo(ML,MT+cH); ctx.lineTo(ML+cW,MT+cH); ctx.stroke();
+
+  // データ線 + 点
+  series.forEach(s => {
+    const pts = allDates.map((d,di) => { const v=s.data[di]; if(v===null)return null; return {x:xOf(di), y:MT+cH-(v/yMax)*cH}; });
+    ctx.strokeStyle=s.color; ctx.lineWidth=2.5; ctx.lineJoin='round';
+    ctx.beginPath(); let go=false;
+    pts.forEach(pt => { if(!pt){go=false;return;} if(!go){ctx.moveTo(pt.x,pt.y);go=true;}else ctx.lineTo(pt.x,pt.y); });
+    ctx.stroke();
+    ctx.fillStyle=s.color;
+    pts.forEach(pt => { if(!pt)return; ctx.beginPath(); ctx.arc(pt.x,pt.y,3.5,0,Math.PI*2); ctx.fill(); });
+  });
+
+  // 凡例
+  ctx.textBaseline='middle';
+  series.forEach((s,si) => {
+    const lx=ML+si*90, ly=11;
+    ctx.fillStyle=s.color; ctx.fillRect(lx,ly-2,16,3);
+    ctx.fillStyle='#48484a'; ctx.font='10px sans-serif'; ctx.textAlign='left';
+    ctx.fillText(s.name, lx+20, ly);
+  });
+}
+
+function importMCSV(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length<2) return;
+    const headers = lines[0].split(',').map(h=>h.trim().replace(/"/g,'').replace(/\(.*?\)/g,'').trim());
+    const hmap = {
+      '日付':'date','date':'date',
+      'インプレッション':'impressions','インプレッション数':'impressions','imp':'impressions','impressions':'impressions','IMP':'impressions',
+      '再生数':'views','views':'views','動画再生数':'views',
+      'クリック':'clicks','クリック数':'clicks','clicks':'clicks',
+      'ctr':'ctr','CTR':'ctr','クリック率':'ctr',
+      'cvr':'cvr','CVR':'cvr','転換率':'cvr',
+      'cv':'cv','CV':'cv','cv数':'cv','CV数':'cv','コンバージョン数':'cv','予約数':'cv',
+      'cpa':'cpa','CPA':'cpa',
+      '消化金額':'spend','費用':'spend','spend':'spend','合計費用':'spend',
+    };
+    const colMap = headers.map(h=>hmap[h]||null);
+    const rows = lines.slice(1).map(line => {
+      const cells = line.split(',').map(c=>c.trim().replace(/"/g,''));
+      const row = {date:'',impressions:'',views:'',clicks:'',ctr:'',cvr:'',cv:'',cpa:'',spend:''};
+      colMap.forEach((fid,ci)=>{ if(fid&&cells[ci]!==undefined) row[fid]=cells[ci]; });
+      return row;
+    }).filter(r=>Object.values(r).some(v=>v));
+    const cr = refs[mPage.refIdx].metrics[mPage.crIdx];
+    if(cr){ cr.rows=rows; renderMetricsPage(); }
+    input.value='';
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function downloadMCSVTemplate() {
+  const headers = TBL_COLS.map(c=>c.label).join(',');
+  const sample = '2025-01-01,10000,4000,120,1.2,5.0,6,3500,21000';
+  const blob = new Blob([headers+'\n'+sample],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='metrics_template.csv'; a.click();
+}
+
+// === Googleスプレッドシート同期 ===
+let gsUrl = '';
+
+function toggleGsPanel() {
+  const panel = document.getElementById('gsPanel');
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')) {
+    document.getElementById('gsUrlInput').value = gsUrl || '';
+  }
+}
+
+function saveGsUrl() {
+  const val = document.getElementById('gsUrlInput').value.trim();
+  if(!val) { alert('URLを入力してください'); return; }
+  gsUrl = val;
+  localStorage.setItem('gsUrl', gsUrl);
+  showGsStatus('URLを保存しました', 'ok');
+}
+
+function clearGsUrl() {
+  if(!confirm('Apps Script URLを削除しますか？')) return;
+  gsUrl = '';
+  localStorage.removeItem('gsUrl');
+  localStorage.removeItem('gsSyncTime');
+  document.getElementById('gsUrlInput').value = '';
+  document.getElementById('gsSyncTime').textContent = '';
+  showGsStatus('URLを削除しました', 'ok');
+}
+
+function showGsStatus(msg, type) {
+  const el = document.getElementById('gsStatus');
+  el.className = 'gs-status ' + type;
+  el.textContent = msg;
+  setTimeout(() => { el.className = 'gs-status'; el.textContent = ''; }, 3000);
+}
+
+function syncToSheets() {
+  if(!gsUrl) {
+    document.getElementById('gsPanel').classList.add('open');
+    document.getElementById('gsUrlInput').value = '';
+    showGsStatus('先にApps Script URLを設定してください', 'err');
+    return;
+  }
+  const btn = document.getElementById('gsBtn');
+  btn.disabled = true;
+  btn.textContent = '同期中…';
+  try {
+    const payload = {
+      syncedAt: new Date().toLocaleString('ja-JP'),
+      refs: refs.map(r => ({
+        title: r.title,
+        configKey: r.configKey,
+        templateKey: r.templateKey,
+        videoUrl: r.videoUrl,
+        fieldValues: r.fieldValues,
+        metrics: r.metrics,
+        scriptText: (REF_CONFIGS[r.configKey]?.blocks || []).map((b,bi) => b.build(r.fieldValues[bi] || {})).join('\n')
+      }))
+    };
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = gsUrl;
+    form.target = 'gsSyncFrame';
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'payload';
+    input.value = JSON.stringify(payload);
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+    setTimeout(() => {
+      const now = new Date().toLocaleString('ja-JP');
+      localStorage.setItem('gsSyncTime', now);
+      document.getElementById('gsSyncTime').textContent = '最終同期: ' + now;
+      document.getElementById('gsPanel').classList.remove('open');
+      showGsStatus('同期しました（スプレッドシートを確認してください）', 'ok');
+      btn.disabled = false;
+      btn.innerHTML = '⟳ スプレッドシート同期';
+    }, 2000);
+  } catch(e) {
+    showGsStatus('エラー: ' + e.message, 'err');
+    btn.disabled = false;
+    btn.innerHTML = '⟳ スプレッドシート同期';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  gsUrl = localStorage.getItem('gsUrl') || '';
+  const lastSync = localStorage.getItem('gsSyncTime');
+  if(lastSync) document.getElementById('gsSyncTime').textContent = '最終同期: ' + lastSync;
+
+  document.addEventListener('click', e => {
+    const panel = document.getElementById('gsPanel');
+    const cfg = document.querySelector('.btn-gs-cfg');
+    if(panel.classList.contains('open') && !panel.contains(e.target) && e.target !== cfg) {
+      panel.classList.remove('open');
+    }
+  });
+
+  renderRefPills();
+  renderForm();
+  render();
+});
+</script>
+<!-- 数値結果ページ -->
+<div id="metricsPage" class="mpage">
+  <div class="mpage-header">
+    <button class="btn-mback" onclick="closeMetricsPage()">‹ 戻る</button>
+    <div class="mpage-title" id="mPageTitle">数値結果</div>
+  </div>
+  <div class="mpage-body">
+    <!-- CR タブ -->
+    <div class="mpage-section" style="padding:14px 20px;">
+      <div class="cr-tabs" id="crTabs"></div>
+    </div>
+    <!-- CR設定 + CSV -->
+    <div class="mpage-section" id="crToolbarSection">
+      <div class="cr-toolbar" id="crToolbar"></div>
+    </div>
+    <!-- グラフ -->
+    <div class="mpage-section">
+      <div class="msec-title">折れ線グラフ</div>
+      <div class="metric-toggles" id="metricToggles" style="margin-bottom:12px;"></div>
+      <div class="chart-wrap">
+        <canvas id="metricsChart" width="900" height="240"></canvas>
+      </div>
+    </div>
+    <!-- テーブル -->
+    <div class="mpage-section">
+      <div class="msec-title">日次データ</div>
+      <div class="table-wrap" id="metricsTableWrap"></div>
+    </div>
+  </div>
+</div>
+
+<iframe name="gsSyncFrame" style="display:none;width:0;height:0;border:none;"></iframe>
+</body>
+</html>
